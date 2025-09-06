@@ -94,9 +94,9 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 11 — Procedural Rooms & Hazards
-- [ ] Add procedural layout generator (obstacles, walls).
-- [ ] Add hazards: spikes, beams, rotating traps.
-- [ ] Expose hazard positions to AI as observables (to bait player).
+- [x] Add procedural layout generator (simple obstacles/rects).
+- [x] Add hazards: spikes (pulsing) and rotating beam trap.
+- [x] Expose hazard positions to AI as observables and influence scoring.
 
 ---
 

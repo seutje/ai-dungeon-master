@@ -13,6 +13,8 @@ export function tickAI(enemy, ctx, dt) {
   }
 
   const d = Math.hypot(ctx.player.x - enemy.x, ctx.player.y - enemy.y);
+  const hz = ctx.hazards || [];
+  const hazardNear = nearestHazardDistance(hz, enemy) < 28 ? 1 : 0;
 
   let bestIdx = 0;
   let bestScore = -Infinity;
@@ -27,13 +29,17 @@ export function tickAI(enemy, ctx, dt) {
     // Preference shaping by distance based on rule name
     if (r.name === 'Approach') {
       score *= (d > 120 ? 1.0 : 0.5);
+      if (hazardNear) score *= 0.7; // avoid pushing into hazards
     } else if (r.name === 'Strafe') {
       score *= (d <= 160 ? 1.0 : 0.3);
+      if (hazardNear) score *= 1.1;
     } else if (r.name === 'KeepDistance') {
       score *= (d < 220 ? 1.2 : 0.7);
+      if (hazardNear) score *= 1.15;
     } else if (r.name === 'Charge') {
       // prefer mid-range to start a charge
       score *= (d > 90 && d < 220) ? 1.1 : 0.4;
+      if (hazardNear) score *= 0.8;
     } else if (r.name === 'AreaDeny') {
       // prefer when player shares nearby space or mid-range
       score *= (d > 80 && d < 260) ? 1.0 : 0.5;
@@ -57,6 +63,37 @@ export function tickAI(enemy, ctx, dt) {
     enemy.memory.telegraph = { text: chosen.name, timer: 0.45, duration: 0.45, color };
     enemy.memory.flash = 0.14;
   }
+}
+
+function nearestHazardDistance(hazards, e) {
+  let best = Infinity;
+  for (const h of hazards) {
+    if (h.type === 'spike') {
+      if (!h.active) continue;
+      const dx = h.x - e.x, dy = h.y - e.y;
+      const d = Math.hypot(dx, dy) - (h.r || 0);
+      if (d < best) best = d;
+    } else if (h.type === 'beam') {
+      // Distance from point to beam segment
+      const x1 = h.cx, y1 = h.cy;
+      const x2 = h.cx + Math.cos(h.angle) * h.len;
+      const y2 = h.cy + Math.sin(h.angle) * h.len;
+      const d = distToSegment(e.x, e.y, x1, y1, x2, y2) - (h.width || 6);
+      if (d < best) best = d;
+    }
+  }
+  return best;
+}
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const vx = x2 - x1, vy = y2 - y1;
+  const wx = px - x1, wy = py - y1;
+  const c1 = vx*wx + vy*wy;
+  if (c1 <= 0) return Math.hypot(px - x1, py - y1);
+  const c2 = vx*vx + vy*vy;
+  if (c2 <= c1) return Math.hypot(px - x2, py - y2);
+  const b = c1 / c2;
+  const bx = x1 + b*vx, by = y1 + b*vy;
+  return Math.hypot(px - bx, py - by);
 }
 
 function isBlacklisted(rule, distance) {

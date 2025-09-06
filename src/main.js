@@ -3,7 +3,7 @@ import { createRenderer } from './render/canvas2d.js';
 import { createPlayer, handleInput, stepPlayer } from './game/player.js';
 import { createEnemy, stepEnemy } from './game/enemies.js';
 import { tickAI } from './ai_runtime.js';
-import { createRoom } from './game/rooms.js';
+import { createRoom, stepRoom } from './game/rooms.js';
 import { captureSnapshot } from './adaptation/snapshot.js';
 import { mutatePopulation } from './adaptation/mutate.js';
 import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
@@ -35,14 +35,15 @@ function fixed(dt) {
   handleInput(state.player, keys, dt);
   // Record per-step inputs as bitset for ghost replay
   state.recorder.push(keysToBits(keys));
-  tickAI(state.enemy, { player: state.player }, dt);
+  tickAI(state.enemy, { player: state.player, hazards: state.room.hazards }, dt);
   stepPlayer(state.player, dt, R.W, R.H);
   stepEnemy(state.enemy, state.player, dt, (spec) => {
     spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, '#9ad');
   });
   stepProjectiles(state.projectiles, dt, R.W, R.H, state.player);
-  // simplistic collision: if overlap, damage player a little (hidden)
-  state.room.time += dt;
+  // Room hazards update and player-hazard damage
+  stepRoom(state.room, dt);
+  applyHazardDamage(state.room, state.player, dt);
   if (state.room.time >= 10) { // end the room after 10s for demo
     endRoomAndAdapt();
   }
@@ -103,6 +104,34 @@ function render(alpha) {
   R.clear();
   // Player
   R.circle(state.player.x, state.player.y, state.player.r, '#4fb', '#2aa');
+  // Obstacles
+  for (const ob of state.room.obstacles || []) {
+    R.circle(ob.x, ob.y, 0, undefined, undefined); // noop to keep context consistent
+    // draw as rounded rect via filled rects approximation
+    // simpler: just draw rectangle borders using text background helper
+    // but we'll use circle strokes for performance; instead, fill rect with a dull color
+    const x = ob.x, y = ob.y, w = ob.w, h = ob.h;
+    // draw rectangle
+    R.textWithBg('', x, y + h, '#0000', 'rgba(255,255,255,0.06)');
+  }
+  // Hazards
+  for (const h of state.room.hazards || []) {
+    if (h.type === 'spike') {
+      const col = h.active ? '#f55' : '#633';
+      R.circle(h.x, h.y, h.r, col, '#a33');
+    } else if (h.type === 'beam') {
+      const x1 = h.cx, y1 = h.cy;
+      const x2 = h.cx + Math.cos(h.angle) * h.len;
+      const y2 = h.cy + Math.sin(h.angle) * h.len;
+      R.ring(x1, y1, 6, '#a8a', 2, 0.6);
+      // draw the beam as a wide line via multiple rings approximation: use textWithBg hack to draw backdrop
+      // Instead, approximate with small circles along the segment
+      const segs = 20; const dx = (x2 - x1)/segs, dy = (y2 - y1)/segs;
+      for (let i = 0; i <= segs; i++) {
+        R.circle(x1 + dx*i, y1 + dy*i, (h.width||8)/2, '#a6f', '#84c');
+      }
+    }
+  }
   // Enemy (color shows which rule was last selected by AI)
   const baseCol = state.enemy.memory.lastChoose === 0 ? '#f95' : '#fd6';
   const flashing = state.enemy.memory.flash && state.enemy.memory.flash > 0;
@@ -133,6 +162,36 @@ function render(alpha) {
     R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
   }
   if (state.betweenRooms) R.text('Adapting...', 420, 24);
+}
+
+function applyHazardDamage(room, player, dt) {
+  for (const h of room.hazards) {
+    if (h.type === 'spike' && h.active) {
+      const dx = player.x - h.x, dy = player.y - h.y;
+      if (dx*dx + dy*dy <= Math.pow(player.r + h.r, 2)) {
+        player.hp = Math.max(0, player.hp - 25*dt);
+      }
+    } else if (h.type === 'beam') {
+      const x1 = h.cx, y1 = h.cy;
+      const x2 = h.cx + Math.cos(h.angle) * h.len;
+      const y2 = h.cy + Math.sin(h.angle) * h.len;
+      const d = distToSegment(player.x, player.y, x1, y1, x2, y2);
+      if (d <= (h.width||8)/2 + player.r) {
+        player.hp = Math.max(0, player.hp - 18*dt);
+      }
+    }
+  }
+}
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const vx = x2 - x1, vy = y2 - y1;
+  const wx = px - x1, wy = py - y1;
+  const c1 = vx*wx + vy*wy;
+  if (c1 <= 0) return Math.hypot(px - x1, py - y1);
+  const c2 = vx*vx + vy*vy;
+  if (c2 <= c1) return Math.hypot(px - x2, py - y2);
+  const b = c1 / c2;
+  const bx = x1 + b*vx, by = y1 + b*vy;
+  return Math.hypot(px - bx, py - by);
 }
 
 start({ fixed, render });
