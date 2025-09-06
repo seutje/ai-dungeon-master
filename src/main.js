@@ -278,8 +278,9 @@ function render(alpha) {
     const mul = telegraphMultiplier(state.settings);
     const ringR = state.enemy.r + 4 + (1 - a) * 18 * mul;
     R.ring(state.enemy.x, state.enemy.y, ringR, pal.ring, 2, Math.min(1, a * 0.85 * mul));
+    // Draw action label below the enemy to avoid overlapping HP bar
     const tx = state.enemy.x - 22;
-    const ty = state.enemy.y - 18;
+    const ty = state.enemy.y + state.enemy.r + 16;
     const bg = `rgba(0,0,0,${0.45 * a + 0.15})`;
     R.textWithBg(t.text, tx, ty, t.color, bg);
   }
