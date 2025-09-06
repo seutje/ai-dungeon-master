@@ -51,9 +51,9 @@ export function stepRoom(room, dt) {
 }
 
 export function roomDuration(id) {
+  // No boss mechanic: flat scaling without extra boss time
   const base = 10 + Math.min(5, Math.max(0, id - 1));
-  const boss = (id % 4 === 0) ? 4 : 0;
-  return base + boss;
+  return base;
 }
 
 // Local PRNG (Mulberry32) for layout determinism per room id

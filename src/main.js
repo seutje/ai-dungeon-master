@@ -7,6 +7,7 @@ import { createRoom, stepRoom, roomDuration } from './game/rooms.js';
 import { captureSnapshot } from './adaptation/snapshot.js';
 import { mutatePopulation } from './adaptation/mutate.js';
 import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
+import { proposePopulation, applyEsUpdate } from './adaptation/rl.js';
 import { CONFIG, loadConfig } from './config.js';
 import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
 import { createRecorder } from './engine/input_recorder.js';
@@ -66,7 +67,7 @@ let state = {
   seed: 12345,
   room: createRoom(1, WORLD_W, WORLD_H),
   player: createPlayer(SPAWN.player.x, SPAWN.player.y),
-  enemy: createEnemy('grunt', SPAWN.enemy.x, SPAWN.enemy.y),
+  enemy: createEnemy('enemy', SPAWN.enemy.x, SPAWN.enemy.y),
   projectiles: createProjectileSystem(),
   recorder: createRecorder(),
   adaptHistory: [],
@@ -77,8 +78,8 @@ let state = {
   gameOver: false,
   started: false,
   score: 0,
-  // Persist learned rules per archetype across rooms
-  learned: Object.create(null),
+  // Learned rules for the single enemy
+  learned: null,
   firing: false,
   mouse: { x: R.W * 0.5, y: R.H * 0.5 },
   camera: { x: 0, y: 0 },
@@ -150,27 +151,15 @@ function fixed(dt) {
   // SFX for fresh telegraphs
   if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.just) {
     state.enemy.memory.telegraph.just = false;
-    beep( state.enemy.archetype === 'Boss' ? 660 : 880, 0.06, 0.02 );
+    beep( 880, 0.06, 0.02 );
   }
   stepPlayer(state.player, dt, state.room.W, state.room.H);
   // Collide player against obstacles
   resolveCircleAabbs(state.player, state.room.obstacles);
   stepEnemy(state.enemy, state.player, dt, (spec) => {
-    const col = state.enemy.archetype === 'Ranged' ? '#fda' : (state.enemy.archetype === 'Boss' ? '#a6f' : '#9ad');
+    const col = '#9ad';
     spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, col, 'enemy');
   });
-  // Flush any boss-spawned hazards into the room
-  if (state.enemy.memory && Array.isArray(state.enemy.memory.spawnHazards) && state.enemy.memory.spawnHazards.length) {
-    const list = state.enemy.memory.spawnHazards;
-    for (let i = 0; i < list.length; i++) state.room.hazards.push(list[i]);
-    state.enemy.memory.spawnHazards.length = 0;
-  }
-  // Reset one-shot latches if rule switched
-  if (state.enemy.memory && state.enemy.memory.telegraph && state.enemy.memory.telegraph.just === false) {
-    // On any rule switch we can clear one-shot latches so they can trigger next time selected
-    state.enemy.memory._spikeLatch = false;
-    state.enemy.memory._laserLatch = false;
-  }
   // Collide enemy against obstacles
   resolveCircleAabbs(state.enemy, state.room.obstacles);
   // Player shooting (hold to fire toward mouse)
@@ -223,18 +212,16 @@ async function endRoomAndAdapt() {
   state.betweenRooms = true;
   const snap = captureSnapshot(state);
   const baseRules = { rules: state.enemy.rules.map(r => ({...r})) };
-  const isCurrentBoss = state.enemy.archetype === 'Boss';
-  const baseSim = isCurrentBoss ? (CONFIG.SIM_COUNT_BOSS||96) : (CONFIG.SIM_COUNT_NORMAL||32);
+  const baseSim = (CONFIG.SIM_COUNT_NORMAL||32);
   const simCount = Math.max(8, Math.round(baseSim * computeSimScale()));
   // Weekly-seeded RNG to vary mutations week-by-week (but deterministic per week)
   const rng = mulberry32((weekSeed() ^ state.seed ^ state.room.id) >>> 0);
-  const population = mutatePopulation(baseRules, simCount, rng);
-  console.log('[Adapt] Simulating', population.length, 'variants...');
-  const { winner, ranked } = await evaluateVariants(snap, baseRules, population);
-  const fairMax = CONFIG.FAIRNESS_MAX ?? 0.02;
-  const chosenRes = ranked.find(r => (r.fairness || 0) <= fairMax) || ranked[0];
-  const chosenVariant = chosenRes.rules; // { rules: [...] }
-  const prevArch = state.enemy.archetype || 'Enemy';
+  const sigma = 0.15; const alpha = 0.6;
+  const population = proposePopulation(baseRules, simCount, sigma, rng);
+  console.log('[Adapt] Training on', population.length, 'rollouts...');
+  const { ranked } = await evaluateVariants(snap, baseRules, population);
+  const updated = applyEsUpdate(baseRules, ranked, alpha, sigma);
+  const prevArch = 'Enemy';
   // Persist best performer (top fitness) for this room to localStorage
   try {
     const best = ranked[0];
@@ -247,71 +234,38 @@ async function endRoomAndAdapt() {
       timestamp: Date.now()
     });
   } catch (_) { /* ignore storage errors */ }
-  console.log('[Adapt] Best fitness:', ranked[0].fitness.toFixed(3), 'Fair:', (ranked[0].fairness||0).toFixed(4), '→ applying', chosenRes===ranked[0]?'top':'next fair');
-  // apply winner (fair-filtered), record codex diff
+  console.log('[Adapt] Mean fitness:', (ranked.reduce((a,r)=>a+(r.fitness||0),0)/ranked.length).toFixed(3), 'Top:', ranked[0].fitness.toFixed(3));
+  // apply RL-updated weights, record codex diff
   const prevRules = state.enemy.rules.map(r => ({ name: r.name, weights: r.weights }));
-  state.enemy.rules = chosenVariant.rules.map(r => ({...r}));
+  state.enemy.rules = updated.rules.map(r => ({...r}));
   // Clamp rule weights to safe max
   const wmax = CONFIG.RULE_WEIGHT_MAX || 1.6;
   for (const r of state.enemy.rules) { if (r.weights > wmax) r.weights = wmax; if (r.weights < 0.05) r.weights = 0.05; }
-  // Record codex entry for this archetype's adapted rules (before swapping enemy)
+  // Record codex entry (before swapping enemy)
   recordAdaptation(state.codex, state.room.id, prevArch, prevRules, state.enemy.rules);
-  // Persist learned rules by archetype so future spawns continue evolving
-  state.learned[prevArch] = state.enemy.rules.map(r => ({...r}));
-  // store recent winners for boss seeding (keep last two)
-  state.adaptHistory.push(chosenVariant);
-  if (state.adaptHistory.length > 2) state.adaptHistory.shift();
+  // Persist learned rules for next room
+  state.learned = state.enemy.rules.map(r => ({...r}));
+  // no boss seeding
   // next room (world-sized, independent of viewport)
   state.room = createRoom(state.room.id + 1, WORLD_W, WORLD_H);
-  // rotate archetype to showcase variety
-  const isBoss = (state.room.id % 4 === 0);
-  const types = isBoss ? ['boss'] : ['grunt', 'ranged', 'support'];
-  const t = isBoss ? 'boss' : types[(state.room.id - 1) % types.length];
+  // single enemy type (no archetypes/boss)
+  const t = 'enemy';
   // Spawn entities at fixed positions for determinism
   const prev = state.enemy;
   const spawn = fixedSpawns(state.room.W, state.room.H);
   state.player.x = spawn.player.x; state.player.y = spawn.player.y;
   state.player.vx = 0; state.player.vy = 0; state.player.dashTime = 0; state.player.dashCd = 0; state.player.invuln = 0;
   state.enemy = createEnemy(t, spawn.enemy.x, spawn.enemy.y);
-  // Apply mod override if present for this archetype
-  if (MODS_ENABLED) {
-    const ov = getRulesOverride(state.enemy.archetype || t);
-    if (ov && Array.isArray(ov.rules)) {
-      state.enemy.rules = ov.rules.map(r => ({...r}));
-    }
-  }
-  // Apply learned rules for this archetype if available (takes precedence over defaults/mods)
-  const learned = state.learned[state.enemy.archetype || t];
-  if (learned && Array.isArray(learned)) {
-    state.enemy.rules = learned.map(r => ({...r}));
+  // Apply learned rules if available
+  if (state.learned && Array.isArray(state.learned)) {
+    state.enemy.rules = state.learned.map(r => ({...r}));
     // Clamp on load
     const wmax2 = CONFIG.RULE_WEIGHT_MAX || 1.6;
     for (const r of state.enemy.rules) { if (r.weights > wmax2) r.weights = wmax2; if (r.weights < 0.05) r.weights = 0.05; }
   }
   // set room duration based on id
   state.room.duration = roomDuration(state.room.id);
-  if (isBoss) {
-    // Seed boss rule weights from the average of the last winners
-    const winners = state.adaptHistory;
-    if (winners.length) {
-      const avg = new Map(); const count = new Map();
-      for (const w of winners) {
-        (w.rules||[]).forEach((r) => {
-          const k = r.name || '';
-          if (!avg.has(k)) { avg.set(k, 0); count.set(k, 0); }
-          avg.set(k, avg.get(k) + (r.weights||0)); count.set(k, count.get(k)+1);
-        });
-      }
-      for (const r of state.enemy.rules) {
-        if (avg.has(r.name)) {
-          r.weights = (avg.get(r.name) / count.get(r.name)) * 0.9 + r.weights * 0.1;
-        }
-      }
-    }
-    // Initialize phase state
-    state.enemy.memory.phase = 1;
-    state.enemy.memory.phaseTimer = 0;
-  }
+  // No boss seeding/phases
   // clear projectiles between rooms
   state.projectiles.list.length = 0;
   // reset input recorder for new room
@@ -338,7 +292,7 @@ function render(alpha) {
     y += 6;
     R.text('Goal', cx, y, '#aef'); y += lh;
     R.text('- Defeat the enemy to clear the room', cx, y); y += lh;
-    R.text('- Every 4th room is a boss', cx, y); y += lh;
+    // Boss mechanic removed
     R.text('- Survive hazards and bullets; HP at top of units', cx, y); y += lh;
     y += 6;
     R.text('Tips', cx, y, '#aef'); y += lh;
@@ -409,16 +363,11 @@ function render(alpha) {
   const r1 = state.enemy.rules[1];
   R.text('Score: ' + (state.score|0), 12, Math.round(lh * 1));
   R.text('Room: ' + state.room.id + '  FPS: ' + (state.fps||0), 12, Math.round(lh * 2));
-  R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, Math.round(lh * 3));
-  R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, Math.round(lh * 4));
-  R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, Math.round(lh * 5));
+  R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, Math.round(lh * 3));
+  R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, Math.round(lh * 4));
 
   drawResetButton(R);
-  if (state.enemy.archetype === 'Boss') {
-    // Place boss phase just below the top-left info block
-    const yBoss = Math.round(lh * 6);
-    R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, yBoss);
-  }
+  // No boss indicator
   // Removed HUD HP text; health shown above entities
   if (state.betweenRooms) R.text('Adapting...', 420, 24);
   if (state.gameOver) {

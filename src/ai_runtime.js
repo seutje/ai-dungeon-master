@@ -32,7 +32,6 @@ export function tickAI(enemy, ctx, dt) {
     if (r.name === 'Approach') {
       score *= (d > 120 ? 1.0 : 0.5);
       if (hazardNear) score *= 0.7; // avoid pushing into hazards
-      if (!hasLos && (enemy.archetype === 'Ranged')) score *= 0.4; // ranged shouldn't mindlessly path into walls
     } else if (r.name === 'Strafe') {
       score *= (d <= 160 ? 1.0 : 0.3);
       if (hazardNear) score *= 1.1;
@@ -40,7 +39,6 @@ export function tickAI(enemy, ctx, dt) {
     } else if (r.name === 'KeepDistance') {
       score *= (d < 220 ? 1.2 : 0.7);
       if (hazardNear) score *= 1.15;
-      if (!hasLos && (enemy.archetype === 'Ranged')) score *= 0.7; // don't backpedal into dead-ends when occluded
     } else if (r.name === 'Charge') {
       // prefer mid-range to start a charge
       score *= (d > 90 && d < 220) ? 1.1 : 0.4;
@@ -59,37 +57,7 @@ export function tickAI(enemy, ctx, dt) {
       score *= (d > 100 && d < 320) ? 1.1 : 0.7;
       if (!hasLos) score *= 0.8;
     }
-    // Boss ability selection: enforce exactly one special ability per phase
-    const phase = (enemy.memory?.phase || 1);
-    if ((enemy.archetype || '') === 'Boss') {
-      const abilities = new Set(['Charge','AreaDeny','SpikeField','LaserSweep','Feint']);
-      const allowed = (phase >= 3) ? 'LaserSweep' : (phase >= 2) ? 'SpikeField' : 'Charge';
-      if (abilities.has(r.name) && r.name !== allowed) {
-        // Strict gating: skip disallowed abilities for this phase
-        continue;
-      }
-    }
-
-    // Archetype-specific preference shaping to create distinct behaviors
-    const arch = enemy.archetype || 'Grunt';
-    if (arch === 'Grunt') {
-      if (r.name === 'Approach') score *= 1.2;
-      if (r.name === 'Charge') score *= 1.3;
-      if (r.name === 'KeepDistance') score *= 0.6;
-      if (r.name === 'Strafe') score *= 0.9;
-    } else if (arch === 'Ranged') {
-      if (r.name === 'Approach') score *= 0.4;
-      if (r.name === 'KeepDistance') score *= 1.35;
-      if (r.name === 'Strafe') score *= 1.15;
-      if (r.name === 'Charge') score *= 0.3;
-    } else if (arch === 'Support') {
-      if (r.name === 'Strafe') score *= 1.3;
-      if (r.name === 'Feint') score *= 1.2;
-      if (r.name === 'Approach') score *= 0.7;
-    } else if (arch === 'Boss') {
-      // keep boss flexible but mildly prefer area/charge in later phases
-      // Additional shaping no longer needed since ability is phase-locked
-    }
+    // No archetypes/boss phases: keep scoring generic
 
     if (score > bestScore) { bestScore = score; bestIdx = i; }
   }
@@ -107,7 +75,7 @@ export function tickAI(enemy, ctx, dt) {
     const dur = 0.45 * mul;
     enemy.memory.telegraph = { text: chosen.name, timer: dur, duration: dur, color, just: true };
     enemy.memory.flash = 0.14;
-    // Clear one-shot latches for abilities that spawn hazards so they can fire on selection
+    // Clear any old latches (not used in simplified rules)
     enemy.memory._spikeLatch = false;
     enemy.memory._laserLatch = false;
   }
