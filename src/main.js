@@ -111,6 +111,7 @@ function fixed(dt) {
   stepRoom(state.room, dt);
   applyHazardDamage(state.room, state.player, dt);
   applyHazardDamageToEnemy(state.room, state.enemy, dt);
+  applyContactDamage(state.player, state.enemy, dt);
 
   // Check lose condition
   if (state.player.hp <= 0) {
@@ -331,6 +332,19 @@ function applyHazardDamageToEnemy(room, enemy, dt) {
       if (d <= (h.width||8)/2 + (enemy.r || 12)) {
         enemy.hp = Math.max(0, enemy.hp - 18*dt);
       }
+    }
+  }
+}
+
+// Enemy contact (body) damage to player
+function applyContactDamage(player, enemy, dt) {
+  if (!enemy || enemy.hp <= 0) return;
+  const dx = player.x - enemy.x, dy = player.y - enemy.y;
+  const rr = (player.r + (enemy.r||12));
+  if (dx*dx + dy*dy <= rr*rr) {
+    if (!player.invuln || player.invuln <= 0) {
+      // Contact DPS
+      player.hp = Math.max(0, player.hp - 30*dt);
     }
   }
 }
