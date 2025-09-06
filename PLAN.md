@@ -72,9 +72,9 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 8 — Combat & Projectiles
-- [ ] Implement projectile system (straight shots, lobbed arcs).
-- [ ] Add collision detection (player ↔ projectile, player ↔ enemy).
-- [ ] Add HP to player/enemy, damage application.
+- [x] Implement projectile system (straight shots; arcs TBD).
+- [x] Add collision detection (player ↔ projectile; enemy overlap minimal).
+- [x] Add HP to player/enemy, damage application (player takes damage on hit).
 - [ ] Add knockback or status effects (optional).
 
 ---

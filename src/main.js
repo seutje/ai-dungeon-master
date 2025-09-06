@@ -7,6 +7,7 @@ import { createRoom } from './game/rooms.js';
 import { captureSnapshot } from './adaptation/snapshot.js';
 import { mutatePopulation } from './adaptation/mutate.js';
 import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
+import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
@@ -20,6 +21,7 @@ let state = {
   room: createRoom(1, R.W, R.H),
   player: createPlayer(R.W*0.25, R.H*0.5),
   enemy: createEnemy('grunt', R.W*0.75, R.H*0.5),
+  projectiles: createProjectileSystem(),
   betweenRooms: false
 };
 
@@ -30,7 +32,10 @@ function fixed(dt) {
   handleInput(state.player, keys, dt);
   tickAI(state.enemy, { player: state.player }, dt);
   stepPlayer(state.player, dt, R.W, R.H);
-  stepEnemy(state.enemy, state.player, dt);
+  stepEnemy(state.enemy, state.player, dt, (spec) => {
+    spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, '#9ad');
+  });
+  stepProjectiles(state.projectiles, dt, R.W, R.H, state.player);
   // simplistic collision: if overlap, damage player a little (hidden)
   state.room.time += dt;
   if (state.room.time >= 10) { // end the room after 10s for demo
@@ -56,6 +61,8 @@ async function endRoomAndAdapt() {
   const t = types[(state.room.id - 1) % types.length];
   const prev = state.enemy;
   state.enemy = createEnemy(t, prev.x, prev.y);
+  // clear projectiles between rooms
+  state.projectiles.list.length = 0;
   state.betweenRooms = false;
 }
 
@@ -68,6 +75,8 @@ function render(alpha) {
   const flashing = state.enemy.memory.flash && state.enemy.memory.flash > 0;
   const fillCol = flashing ? '#fff' : baseCol;
   R.circle(state.enemy.x, state.enemy.y, state.enemy.r, fillCol, '#a53');
+  // Projectiles
+  renderProjectiles(state.projectiles, R);
   // Telegraph text near enemy when switching actions
   if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.timer > 0) {
     const t = state.enemy.memory.telegraph;
@@ -86,6 +95,7 @@ function render(alpha) {
   R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, 28);
   R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 46);
   R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 64);
+  R.text(`Player HP: ${state.player.hp.toFixed(0)}`, 12, 84);
   if (state.betweenRooms) R.text('Adapting...', 420, 24);
 }
 

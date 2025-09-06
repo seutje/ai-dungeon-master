@@ -1,4 +1,4 @@
-import { moveToward, strafeAround, keepDistance, makeCharge } from '../actions.js';
+import { moveToward, strafeAround, keepDistance, makeCharge, burstFire } from '../actions.js';
 
 export function createEnemy(type, x, y) {
   // Backward compatibility: if first arg is number, assume old signature
@@ -35,7 +35,7 @@ export function createEnemy(type, x, y) {
     ]
   };
 }
-export function stepEnemy(e, player, dt) {
+export function stepEnemy(e, player, dt, emitProjectile) {
   // Execute movement based on last chosen rule from ai_runtime
   const idx = e.memory.lastChoose | 0;
   const name = e.rules[idx]?.name || 'Approach';
@@ -57,5 +57,17 @@ export function stepEnemy(e, player, dt) {
     // Fallback behavior
     const v = moveToward(e, player.x, player.y, e.speed, 0.8, dt);
     e.vx = v.vx; e.vy = v.vy;
+  }
+
+  // Ranged archetype: fire periodically when within reasonable distance
+  if (e.archetype === 'Ranged' && emitProjectile) {
+    e.memory.shootCd = (e.memory.shootCd || 0) - dt;
+    const dx = player.x - e.x, dy = player.y - e.y;
+    const d = Math.hypot(dx, dy) || 1;
+    if (e.memory.shootCd <= 0 && d <= 340) {
+      const shots = burstFire({ x: e.x, y: e.y }, player, 3, 0.09, 500);
+      for (const s of shots) emitProjectile(s);
+      e.memory.shootCd = 0.9;
+    }
   }
 }
