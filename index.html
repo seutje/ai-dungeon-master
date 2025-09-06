@@ -15,5 +15,16 @@
   <div id="hud">AI Dungeon Master • <span id="fps">--</span> FPS • Room: <span id="room">1</span></div>
   <canvas id="game" width="960" height="540"></canvas>
   <script type="module" src="/src/main.js"></script>
+  <script>
+    // Simple live-reload (only active if dev server endpoint exists)
+    (function(){
+      if (!('EventSource' in window)) return;
+      try {
+        var es = new EventSource('/__livereload');
+        es.addEventListener('reload', function(){ location.reload(); });
+        es.onerror = function(){ /* silent */ };
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
 </body>
 </html>

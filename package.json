@@ -1,0 +1,9 @@
+{
+  "name": "ai-dungeon-master-browser",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI Dungeon Master (vanilla JS) dev server and static files",
+  "scripts": {
+    "dev": "node devserver.js"
+  }
+}

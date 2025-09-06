@@ -9,11 +9,13 @@ A starter repo for the **AI Dungeon Master** concept running entirely in the bro
 - Full design doc in **DESIGN.md**
 
 ## Run
-Any static file server works. for live-reload server on port 8000:
+Any static file server works. For a built-in live-reload server on port 8000:
 
 ```bash
 npm run dev
 ```
+
+This serves the repo root at http://localhost:8000 and auto-reloads the page when files under the project change.
 
 ## Controls
 - **WASD/Arrow keys**: move
