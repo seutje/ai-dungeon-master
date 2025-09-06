@@ -59,13 +59,15 @@ export function tickAI(enemy, ctx, dt) {
       score *= (d > 100 && d < 320) ? 1.1 : 0.7;
       if (!hasLos) score *= 0.8;
     }
-
-    // Phase gating: gradually unlock stronger abilities
+    // Boss ability selection: enforce exactly one special ability per phase
     const phase = (enemy.memory?.phase || 1);
-    if (phase < 2) {
-      if (r.name === 'Charge' || r.name === 'AreaDeny' || r.name === 'SpikeField' || r.name === 'LaserSweep') score *= 0.3;
-    } else if (phase < 3) {
-      if (r.name === 'LaserSweep') score *= 0.5;
+    if ((enemy.archetype || '') === 'Boss') {
+      const abilities = new Set(['Charge','AreaDeny','SpikeField','LaserSweep','Feint']);
+      const allowed = (phase >= 3) ? 'LaserSweep' : (phase >= 2) ? 'SpikeField' : 'Charge';
+      if (abilities.has(r.name) && r.name !== allowed) {
+        // Severely down-rank other abilities for this phase; movement rules unaffected
+        score *= 0.05;
+      }
     }
 
     // Archetype-specific preference shaping to create distinct behaviors
@@ -86,14 +88,7 @@ export function tickAI(enemy, ctx, dt) {
       if (r.name === 'Approach') score *= 0.7;
     } else if (arch === 'Boss') {
       // keep boss flexible but mildly prefer area/charge in later phases
-      if ((enemy.memory?.phase||1) >= 2) {
-        if (r.name === 'AreaDeny') score *= 1.15;
-        if (r.name === 'Charge') score *= 1.1;
-        if (r.name === 'SpikeField') score *= 1.1;
-      }
-      if ((enemy.memory?.phase||1) >= 3) {
-        if (r.name === 'LaserSweep') score *= 1.15;
-      }
+      // Additional shaping no longer needed since ability is phase-locked
     }
 
     if (score > bestScore) { bestScore = score; bestIdx = i; }

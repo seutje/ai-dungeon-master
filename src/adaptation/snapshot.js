@@ -233,10 +233,13 @@ export function stepSimulation(sim, dt, inputBits = 0) {
     else if (r.name==='Feint'){ score *= (d<160?0.8:0.3); }
     else if (r.name==='SpikeField'){ score *= (d>120&&d<320)?1.15:0.6; }
     else if (r.name==='LaserSweep'){ score *= (d>100&&d<320)?1.1:0.7; if(!los) score*=0.8; }
-    // Phase gating
+    // Boss ability selection: enforce one special ability per phase in simulation
     const phase = (enemy.memory?.phase||1);
-    if (phase < 2) { if (r.name==='Charge'||r.name==='AreaDeny'||r.name==='SpikeField'||r.name==='LaserSweep') score *= 0.3; }
-    else if (phase < 3) { if (r.name==='LaserSweep') score *= 0.5; }
+    if ((enemy.archetype||'')==='Boss'){
+      const abilities = new Set(['Charge','AreaDeny','SpikeField','LaserSweep','Feint']);
+      const allowed = (phase>=3)?'LaserSweep':(phase>=2)?'SpikeField':'Charge';
+      if (abilities.has(r.name) && r.name!==allowed) score *= 0.05;
+    }
     if (score>bestScore){bestScore=score; bestIdx=i;}
   }
   enemy.memory.lastChoose = bestIdx; const chosen = enemy.rules[bestIdx];
