@@ -17,6 +17,7 @@ import { createCodex, recordAdaptation, renderCodex } from './ui/codex.js';
 import { createSettings, saveSettings, telegraphMultiplier, palette, keymap } from './ui/settings.js';
 import { mulberry32, weekSeed } from './engine/rng.js';
 import { loadModRules, getRulesOverride } from './data/mod.js';
+import { saveBestPerformer } from './data/persistence.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
@@ -174,6 +175,18 @@ async function endRoomAndAdapt() {
   const fairMax = CONFIG.FAIRNESS_MAX ?? 0.02;
   const chosenRes = ranked.find(r => (r.fairness || 0) <= fairMax) || ranked[0];
   const chosenVariant = chosenRes.rules; // { rules: [...] }
+  // Persist best performer (top fitness) for this room to localStorage
+  try {
+    const best = ranked[0];
+    saveBestPerformer(state.room.id, {
+      roomId: state.room.id,
+      archetype: state.enemy.archetype || 'Enemy',
+      fitness: Number(best.fitness || 0),
+      fairness: Number(best.fairness || 0),
+      rules: best.rules && best.rules.rules ? best.rules.rules : (best.rules || []),
+      timestamp: Date.now()
+    });
+  } catch (_) { /* ignore storage errors */ }
   console.log('[Adapt] Best fitness:', ranked[0].fitness.toFixed(3), 'Fair:', (ranked[0].fairness||0).toFixed(4), '→ applying', chosenRes===ranked[0]?'top':'next fair');
   // apply winner (fair-filtered), record codex diff
   const prevRules = state.enemy.rules.map(r => ({ name: r.name, weights: r.weights }));
