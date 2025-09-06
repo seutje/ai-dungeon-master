@@ -13,7 +13,7 @@ export function proposePopulation(baseRules, count, sigma = 0.15, rng = Math.ran
       eps.push(e);
       return { ...r, weights: clamp((r.weights || 0.5) + e, 0.05, 2.0) };
     });
-    pop.push({ rules: { rules }, _eps: eps });
+    pop.push({ rules, _eps: eps });
   }
   return pop;
 }
@@ -45,4 +45,3 @@ function gauss(rng) {
   let u = 0, v = 0; while (u === 0) u = rng(); while (v === 0) v = rng();
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
-
