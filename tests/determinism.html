@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Determinism Test</title>
+  <style>
+    body { background:#0e0e13; color:#eaeaea; font-family: system-ui, sans-serif; padding: 16px; }
+    .pass { color:#7fdb6a; }
+    .fail { color:#ff6b6b; }
+    code { color:#9ad; }
+  </style>
+</head>
+<body>
+  <h1>Determinism Regression Test</h1>
+  <p>Ensures identical inputs + seed → identical fitness ordering and winner.</p>
+  <pre id="log">Running…</pre>
+  <script type="module" src="./determinism.js"></script>
+</body>
+</html>
+

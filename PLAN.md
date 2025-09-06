@@ -111,7 +111,7 @@ It is designed for AI agents or developers to track programming progress.
 - [ ] Profile main loop performance (Chrome DevTools).
 - [x] Optimize object pooling for projectiles.
 - [x] Scale down replay count automatically on weak devices.
-- [ ] Implement determinism regression tests.
+- [x] Implement determinism regression tests (browser harness under tests/).
 
 ---
 
