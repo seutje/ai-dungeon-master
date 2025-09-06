@@ -2,7 +2,7 @@ export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   let W = canvas.width, H = canvas.height;
   // Increased default font size for all canvas text
-  let fontPx = 22;
+  let fontPx = 30;
   // Line height multiplier controls vertical spacing between lines
   let lineMult = 1.3; // ~28px at 22px font
   function clear() {

@@ -22,7 +22,7 @@ import { saveBestPerformer, clearBestPerformers } from './data/persistence.js';
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
 // Increase global canvas text size
-R.setTextSize(30);
+//R.setTextSize(30);
 function resizeCanvasToWindow() {
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
   const w = Math.floor(window.innerWidth * dpr);
