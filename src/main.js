@@ -45,11 +45,20 @@ loadModRules();
 const WORLD_W = 2000;
 const WORLD_H = 1200;
 
+function fixedSpawns(W, H) {
+  return {
+    player: { x: Math.floor(W * 0.25), y: Math.floor(H * 0.5) },
+    enemy:  { x: Math.floor(W * 0.75), y: Math.floor(H * 0.5) }
+  };
+}
+
+const SPAWN = fixedSpawns(WORLD_W, WORLD_H);
+
 let state = {
   seed: 12345,
   room: createRoom(1, WORLD_W, WORLD_H),
-  player: createPlayer(WORLD_W*0.25, WORLD_H*0.5),
-  enemy: createEnemy('grunt', WORLD_W*0.75, WORLD_H*0.5),
+  player: createPlayer(SPAWN.player.x, SPAWN.player.y),
+  enemy: createEnemy('grunt', SPAWN.enemy.x, SPAWN.enemy.y),
   projectiles: createProjectileSystem(),
   recorder: createRecorder(),
   adaptHistory: [],
@@ -218,8 +227,12 @@ async function endRoomAndAdapt() {
   const isBoss = (state.room.id % 4 === 0);
   const types = isBoss ? ['boss'] : ['grunt', 'ranged', 'support'];
   const t = isBoss ? 'boss' : types[(state.room.id - 1) % types.length];
+  // Spawn entities at fixed positions for determinism
   const prev = state.enemy;
-  state.enemy = createEnemy(t, prev.x, prev.y);
+  const spawn = fixedSpawns(state.room.W, state.room.H);
+  state.player.x = spawn.player.x; state.player.y = spawn.player.y;
+  state.player.vx = 0; state.player.vy = 0; state.player.dashTime = 0; state.player.dashCd = 0; state.player.invuln = 0;
+  state.enemy = createEnemy(t, spawn.enemy.x, spawn.enemy.y);
   // Apply mod override if present for this archetype
   const ov = getRulesOverride(state.enemy.archetype || t);
   if (ov && Array.isArray(ov.rules)) {
