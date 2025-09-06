@@ -23,17 +23,53 @@ export function captureSnapshot(state) {
 }
 
 export function restoreSnapshot(snap, rules) {
-  // Apply variant rules; keep other snapshot fields
-  const enemy = { ...snap.enemy, rules: rules.rules.map(r => ({...r})) };
+  // Accept both full game snapshots and minimal test snapshots
+  const defWorld = { W: (snap.world && snap.world.W) || 1000, H: (snap.world && snap.world.H) || 700 };
+  const world = snap.world ? { W: snap.world.W|0, H: snap.world.H|0 } : defWorld;
+  const srcRoom = snap.room || { id: 0, hazards: [], obstacles: [] };
+  const room = {
+    id: (srcRoom.id || 0),
+    time: 0,
+    hazards: Array.isArray(srcRoom.hazards) ? srcRoom.hazards.map(h => ({ ...h })) : [],
+    obstacles: Array.isArray(srcRoom.obstacles) ? srcRoom.obstacles.map(o => ({ ...o })) : []
+  };
+  // Player defaults
+  const srcPlayer = snap.player || {};
+  const player = {
+    x: srcPlayer.x || Math.floor(world.W * 0.25),
+    y: srcPlayer.y || Math.floor(world.H * 0.5),
+    r: srcPlayer.r || 10,
+    speed: srcPlayer.speed || 180,
+    hp: srcPlayer.hp != null ? srcPlayer.hp : 100,
+    maxHp: srcPlayer.maxHp != null ? srcPlayer.maxHp : 100,
+    dashCd: srcPlayer.dashCd || 0,
+    dashTime: srcPlayer.dashTime || 0,
+    invuln: srcPlayer.invuln || 0
+  };
+  // Enemy defaults; apply provided rule variant
+  const srcEnemy = snap.enemy || {};
+  const enemy = {
+    x: srcEnemy.x || Math.floor(world.W * 0.75),
+    y: srcEnemy.y || Math.floor(world.H * 0.5),
+    r: srcEnemy.r || 12,
+    speed: srcEnemy.speed || 150,
+    hp: srcEnemy.hp != null ? srcEnemy.hp : 60,
+    maxHp: srcEnemy.maxHp != null ? srcEnemy.maxHp : 60,
+    archetype: srcEnemy.archetype || 'Grunt',
+    rules: (rules && Array.isArray(rules.rules)) ? rules.rules.map(r => ({ ...r })) : (srcEnemy.rules || []).map(r => ({ ...r })),
+    memory: { lastChoose: 0, phase: 1, phaseTimer: 0 }
+  };
+  const steps = (snap.steps != null ? snap.steps : (snap.horizonSteps != null ? snap.horizonSteps : 180)) | 0;
+  const dt = (typeof snap.dt === 'number' && snap.dt > 0) ? snap.dt : 1/120;
   return {
-    seed: snap.seed >>> 0,
-    world: { ...snap.world },
-    room: { id: snap.room.id, time: 0, hazards: snap.room.hazards.map(h => ({...h})), obstacles: snap.room.obstacles.map(o => ({...o})) },
-    player: { ...snap.player },
+    seed: (snap.seed >>> 0) || 0,
+    world,
+    room,
+    player,
     enemy,
-    steps: snap.steps,
-    dt: snap.dt,
-    inputs: snap.inputs || [],
+    steps,
+    dt,
+    inputs: Array.isArray(snap.inputs) ? snap.inputs : [],
     projectiles: { list: [], pool: [] },
     log: { dps: 0, controlTime: 0, jitter: 0, economy: 0, unfairFlags: 0 },
     _prev: { ex: enemy.x, ey: enemy.y }
