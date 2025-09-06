@@ -19,7 +19,7 @@ let state = {
   seed: 12345,
   room: createRoom(1, R.W, R.H),
   player: createPlayer(R.W*0.25, R.H*0.5),
-  enemy: createEnemy(R.W*0.75, R.H*0.5),
+  enemy: createEnemy('grunt', R.W*0.75, R.H*0.5),
   betweenRooms: false
 };
 
@@ -51,6 +51,11 @@ async function endRoomAndAdapt() {
   // next room
   state.room = createRoom(state.room.id + 1, R.W, R.H);
   document.getElementById('room').textContent = String(state.room.id);
+  // rotate archetype to showcase variety
+  const types = ['grunt', 'ranged', 'support'];
+  const t = types[(state.room.id - 1) % types.length];
+  const prev = state.enemy;
+  state.enemy = createEnemy(t, prev.x, prev.y);
   state.betweenRooms = false;
 }
 
@@ -58,7 +63,7 @@ function render(alpha) {
   R.clear();
   // Player
   R.circle(state.player.x, state.player.y, state.player.r, '#4fb', '#2aa');
-  // Enemy (color shows which rule was last selected by dummy AI)
+  // Enemy (color shows which rule was last selected by AI)
   const baseCol = state.enemy.memory.lastChoose === 0 ? '#f95' : '#fd6';
   const flashing = state.enemy.memory.flash && state.enemy.memory.flash > 0;
   const fillCol = flashing ? '#fff' : baseCol;
@@ -76,8 +81,11 @@ function render(alpha) {
     // Slightly dim text as it fades
     R.textWithBg(t.text, tx, ty, t.color, bg);
   }
-  R.text('Approach weight: ' + state.enemy.rules[0].weights.toFixed(2), 12, 28);
-  R.text('Strafe weight:   ' + state.enemy.rules[1].weights.toFixed(2), 12, 46);
+  const r0 = state.enemy.rules[0];
+  const r1 = state.enemy.rules[1];
+  R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, 28);
+  R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 46);
+  R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 64);
   if (state.betweenRooms) R.text('Adapting...', 420, 24);
 }
 

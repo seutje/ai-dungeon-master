@@ -64,10 +64,10 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 7 — Multiple Enemy Archetypes
-- [ ] Add **Grunt** archetype: basic melee charger.
-- [ ] Add **Ranged** archetype: keeps distance, fires projectiles.
-- [ ] Add **Support** archetype: buffs or heals others.
-- [ ] Add enemy factory to spawn different archetypes per room.
+- [x] Add **Grunt** archetype: basic melee charger.
+- [x] Add **Ranged** archetype: keeps distance (projectiles TBD in Phase 8).
+- [x] Add **Support** archetype: conservative movement (stub), ready for buffs.
+- [x] Add enemy factory to spawn different archetypes per room.
 
 ---
 

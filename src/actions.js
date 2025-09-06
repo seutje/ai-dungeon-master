@@ -69,3 +69,22 @@ export function burstFire(origin, target, count = 3, spread = 0.1, speed = 420) 
 export function feint(duration_ms = 200) {
   return { remaining: duration_ms / 1000 };
 }
+
+// Keep distance: move away if closer than desired range; otherwise orbit slowly.
+export function keepDistance(e, target, baseSpeed, desired = 220, dt) {
+  const dx = target.x - e.x, dy = target.y - e.y;
+  const d = Math.hypot(dx, dy) || 1;
+  if (d < desired) {
+    // move away to open space
+    const vx = (-dx / d) * baseSpeed * 0.9;
+    const vy = (-dy / d) * baseSpeed * 0.9;
+    e.x += vx * dt; e.y += vy * dt; return { vx, vy };
+  } else {
+    // gentle orbit when comfortable
+    const tx = dx / d, ty = dy / d;
+    const orbit = 0.4;
+    const vx = (tx + -ty * orbit) * baseSpeed * 0.6;
+    const vy = (ty + tx * orbit) * baseSpeed * 0.6;
+    e.x += vx * dt; e.y += vy * dt; return { vx, vy };
+  }
+}

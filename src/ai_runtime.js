@@ -25,8 +25,16 @@ export function tickAI(enemy, ctx, dt) {
 
     let score = r.weights || 0.5;
     // Preference shaping by distance based on rule name
-    if (r.name === 'Approach') score *= (d > 120 ? 1.0 : 0.5);
-    else if (r.name === 'Strafe') score *= (d <= 160 ? 1.0 : 0.3);
+    if (r.name === 'Approach') {
+      score *= (d > 120 ? 1.0 : 0.5);
+    } else if (r.name === 'Strafe') {
+      score *= (d <= 160 ? 1.0 : 0.3);
+    } else if (r.name === 'KeepDistance') {
+      score *= (d < 220 ? 1.2 : 0.7);
+    } else if (r.name === 'Charge') {
+      // prefer mid-range to start a charge
+      score *= (d > 90 && d < 220) ? 1.1 : 0.4;
+    }
 
     if (score > bestScore) { bestScore = score; bestIdx = i; }
   }
