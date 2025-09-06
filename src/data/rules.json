@@ -1,1 +1,31 @@
-{}
+{
+  "Grunt": {
+    "rules": [
+      { "name": "Approach", "weights": 1.0, "cdMs": 150, "blacklistTags": ["NoClose"] },
+      { "name": "Charge",   "weights": 0.5, "cdMs": 800 }
+    ]
+  },
+  "Ranged": {
+    "rules": [
+      { "name": "KeepDistance", "weights": 1.2, "cdMs": 240 },
+      { "name": "Strafe",       "weights": 0.8, "cdMs": 320 },
+      { "name": "Approach",     "weights": 0.2, "cdMs": 300, "blacklistTags": ["NoClose"] }
+    ]
+  },
+  "Support": {
+    "rules": [
+      { "name": "Strafe",   "weights": 0.9, "cdMs": 260 },
+      { "name": "Approach", "weights": 0.5, "cdMs": 240 }
+    ]
+  },
+  "Boss": {
+    "rules": [
+      { "name": "Approach",      "weights": 0.8, "cdMs": 180 },
+      { "name": "Strafe",        "weights": 0.8, "cdMs": 240 },
+      { "name": "KeepDistance",  "weights": 0.7, "cdMs": 260 },
+      { "name": "Charge",        "weights": 0.6, "cdMs": 750 },
+      { "name": "AreaDeny",      "weights": 0.6, "cdMs": 900 },
+      { "name": "Feint",         "weights": 0.4, "cdMs": 700 }
+    ]
+  }
+}
