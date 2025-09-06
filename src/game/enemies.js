@@ -29,16 +29,18 @@ export function createEnemy(type, x, y) {
     return {
       ...base,
       archetype: 'Boss', speed: 150,
+      hp: 180, maxHp: 180,
       rules: [
-        { name:'Approach',   weights: 0.9, cooldown: 0, cdMs: 180 },
-        { name:'Strafe',     weights: 0.6, cooldown: 0, cdMs: 260 },
+        // Phase 1 core kit
+        { name:'Approach',     weights: 0.9, cooldown: 0, cdMs: 180 },
+        { name:'Strafe',       weights: 0.6, cooldown: 0, cdMs: 260 },
         { name:'KeepDistance', weights: 0.5, cooldown: 0, cdMs: 280 },
-        { name:'Charge',     weights: 0.4, cooldown: 0, cdMs: 800 },
-        { name:'AreaDeny',   weights: 0.3, cooldown: 0, cdMs: 900 },
-        { name:'Feint',      weights: 0.2, cooldown: 0, cdMs: 700 },
-        // New boss mechanics
-        { name:'SpikeField', weights: 0.45, cooldown: 0, cdMs: 1200 },
-        { name:'LaserSweep', weights: 0.4,  cooldown: 0, cdMs: 1400 }
+        { name:'Feint',        weights: 0.2, cooldown: 0, cdMs: 700 },
+        // Later-phase abilities start low and get boosted by phase gates
+        { name:'Charge',       weights: 0.2, cooldown: 0, cdMs: 800 },
+        { name:'AreaDeny',     weights: 0.2, cooldown: 0, cdMs: 900 },
+        { name:'SpikeField',   weights: 0.1, cooldown: 0, cdMs: 1200 },
+        { name:'LaserSweep',   weights: 0.05, cooldown: 0, cdMs: 1400 }
       ],
       memory: { lastChoose: 0, phase: 1, phaseTimer: 0 }
     };
@@ -134,15 +136,16 @@ export function stepEnemy(e, player, dt, emitProjectile) {
     if (e.memory.phase === 1 && e.memory.phaseTimer > 6) {
       e.memory.phase = 2;
       // unlock stronger offense
-      tuneRuleWeight(e, 'Charge', 0.6);
+      tuneRuleWeight(e, 'Charge', 0.7);
       tuneRuleWeight(e, 'AreaDeny', 0.6);
-      tuneRuleWeight(e, 'SpikeField', 0.55);
+      tuneRuleWeight(e, 'SpikeField', 0.6);
       telegraphPhase(e, 'Phase 2');
     } else if (e.memory.phase === 2 && e.memory.phaseTimer > 12) {
       e.memory.phase = 3;
       tuneRuleWeight(e, 'KeepDistance', 0.8);
       tuneRuleWeight(e, 'Strafe', 0.8);
-      tuneRuleWeight(e, 'LaserSweep', 0.55);
+      tuneRuleWeight(e, 'AreaDeny', 0.8);
+      tuneRuleWeight(e, 'LaserSweep', 0.7);
       telegraphPhase(e, 'Phase 3');
     }
   }

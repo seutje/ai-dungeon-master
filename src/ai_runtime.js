@@ -60,6 +60,14 @@ export function tickAI(enemy, ctx, dt) {
       if (!hasLos) score *= 0.8;
     }
 
+    // Phase gating: gradually unlock stronger abilities
+    const phase = (enemy.memory?.phase || 1);
+    if (phase < 2) {
+      if (r.name === 'Charge' || r.name === 'AreaDeny' || r.name === 'SpikeField' || r.name === 'LaserSweep') score *= 0.3;
+    } else if (phase < 3) {
+      if (r.name === 'LaserSweep') score *= 0.5;
+    }
+
     // Archetype-specific preference shaping to create distinct behaviors
     const arch = enemy.archetype || 'Grunt';
     if (arch === 'Grunt') {
