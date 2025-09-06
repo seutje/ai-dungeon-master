@@ -154,6 +154,18 @@ function fixed(dt) {
     const col = state.enemy.archetype === 'Ranged' ? '#fda' : (state.enemy.archetype === 'Boss' ? '#a6f' : '#9ad');
     spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, col, 'enemy');
   });
+  // Flush any boss-spawned hazards into the room
+  if (state.enemy.memory && Array.isArray(state.enemy.memory.spawnHazards) && state.enemy.memory.spawnHazards.length) {
+    const list = state.enemy.memory.spawnHazards;
+    for (let i = 0; i < list.length; i++) state.room.hazards.push(list[i]);
+    state.enemy.memory.spawnHazards.length = 0;
+  }
+  // Reset one-shot latches if rule switched
+  if (state.enemy.memory && state.enemy.memory.telegraph && state.enemy.memory.telegraph.just === false) {
+    // On any rule switch we can clear one-shot latches so they can trigger next time selected
+    state.enemy.memory._spikeLatch = false;
+    state.enemy.memory._laserLatch = false;
+  }
   // Collide enemy against obstacles
   resolveCircleAabbs(state.enemy, state.room.obstacles);
   // Player shooting (hold to fire toward mouse)

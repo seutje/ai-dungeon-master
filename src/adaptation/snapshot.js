@@ -132,6 +132,14 @@ function stepHazards(room, dt) {
     } else if (h.type === 'beam') {
       h.angle = (h.angle + (h.angVel||0) * dt) % (Math.PI*2);
     }
+    if (h.ttl != null) { h.ttl -= dt; }
+  }
+  // Remove expired temporary hazards
+  if (room.hazards.length) {
+    for (let i = room.hazards.length - 1; i >= 0; i--) {
+      const h = room.hazards[i];
+      if (h.ttl != null && h.ttl <= 0) room.hazards.splice(i, 1);
+    }
   }
 }
 function distToSegment(px, py, x1, y1, x2, y2) {
@@ -244,6 +252,21 @@ export function stepSimulation(sim, dt, inputBits = 0) {
       const shots = 10 + (enemy.memory.phase||1)*2; const speed = 340 + (enemy.memory.phase||1)*30;
       for (let i=0;i<shots;i++){ const ang = (i/shots)*Math.PI*2; sim.projectiles.list.push({ x:enemy.x, y:enemy.y, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed, r:3, damage:10, life:2.0, owner:'enemy' }); }
       enemy._burstCd = 1.2;
+    }
+  } else if (name==='SpikeField') {
+    if (!enemy._spikeLatch) {
+      enemy._spikeLatch = true;
+      const count = 6; const radius = 110;
+      for (let i=0;i<count;i++){
+        const a=(i/count)*Math.PI*2; const hx=player.x+Math.cos(a)*radius; const hy=player.y+Math.sin(a)*radius;
+        sim.room.hazards.push({ type:'spike', x:Math.round(hx), y:Math.round(hy), r:16, period:1.2, phase:(i*0.35)%(Math.PI*2), active:false, ttl:6.0 });
+      }
+    }
+  } else if (name==='LaserSweep') {
+    if (!enemy._laserLatch) {
+      enemy._laserLatch = true;
+      const base=Math.atan2(player.y-enemy.y, player.x-enemy.x)-0.6;
+      sim.room.hazards.push({ type:'beam', cx:Math.round(enemy.x), cy:Math.round(enemy.y), len:420, angle:base, angVel:1.5, width:10, ttl:4.0 });
     }
   }
   // Dodge on near player bullet

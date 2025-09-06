@@ -39,6 +39,14 @@ export function stepRoom(room, dt) {
     } else if (h.type === 'beam') {
       h.angle = (h.angle + (h.angVel||0) * dt) % (Math.PI*2);
     }
+    if (h.ttl != null) { h.ttl -= dt; }
+  }
+  // Remove expired temporary hazards (ttl <= 0)
+  if (room.hazards.length) {
+    for (let i = room.hazards.length - 1; i >= 0; i--) {
+      const h = room.hazards[i];
+      if (h.ttl != null && h.ttl <= 0) room.hazards.splice(i, 1);
+    }
   }
 }
 

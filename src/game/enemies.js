@@ -35,7 +35,10 @@ export function createEnemy(type, x, y) {
         { name:'KeepDistance', weights: 0.5, cooldown: 0, cdMs: 280 },
         { name:'Charge',     weights: 0.4, cooldown: 0, cdMs: 800 },
         { name:'AreaDeny',   weights: 0.3, cooldown: 0, cdMs: 900 },
-        { name:'Feint',      weights: 0.2, cooldown: 0, cdMs: 700 }
+        { name:'Feint',      weights: 0.2, cooldown: 0, cdMs: 700 },
+        // New boss mechanics
+        { name:'SpikeField', weights: 0.45, cooldown: 0, cdMs: 1200 },
+        { name:'LaserSweep', weights: 0.4,  cooldown: 0, cdMs: 1400 }
       ],
       memory: { lastChoose: 0, phase: 1, phaseTimer: 0 }
     };
@@ -77,6 +80,31 @@ export function stepEnemy(e, player, dt, emitProjectile) {
         e.memory.burstCd = 1.2;
       }
     }
+  } else if (name === 'SpikeField') {
+    // One-shot: spawn temporary spikes around player
+    e.memory._didSpikeField = e.memory._didSpikeField || 0;
+    if (!e.memory._spikeLatch) {
+      e.memory._spikeLatch = true;
+      const count = 6;
+      const radius = 110;
+      const hazards = [];
+      for (let i = 0; i < count; i++) {
+        const a = (i / count) * Math.PI * 2;
+        const hx = player.x + Math.cos(a) * radius;
+        const hy = player.y + Math.sin(a) * radius;
+        hazards.push({ type:'spike', x: Math.round(hx), y: Math.round(hy), r: 16, period: 1.2, phase: (i*0.35)% (Math.PI*2), active: false, ttl: 6.0 });
+      }
+      (e.memory.spawnHazards || (e.memory.spawnHazards = [])).push(...hazards);
+    }
+  } else if (name === 'LaserSweep') {
+    // One-shot: spawn a temporary rotating beam centered on boss
+    if (!e.memory._laserLatch) {
+      e.memory._laserLatch = true;
+      const dx = player.x - e.x, dy = player.y - e.y;
+      const base = Math.atan2(dy, dx) - 0.6; // start slightly before player
+      const hazard = { type:'beam', cx: Math.round(e.x), cy: Math.round(e.y), len: 420, angle: base, angVel: 1.5, width: 10, ttl: 4.0 };
+      (e.memory.spawnHazards || (e.memory.spawnHazards = [])).push(hazard);
+    }
   } else if (name === 'Feint') {
     e.memory.feint = e.memory.feint || feint(250);
     e.memory.feint.remaining -= dt;
@@ -108,11 +136,13 @@ export function stepEnemy(e, player, dt, emitProjectile) {
       // unlock stronger offense
       tuneRuleWeight(e, 'Charge', 0.6);
       tuneRuleWeight(e, 'AreaDeny', 0.6);
+      tuneRuleWeight(e, 'SpikeField', 0.55);
       telegraphPhase(e, 'Phase 2');
     } else if (e.memory.phase === 2 && e.memory.phaseTimer > 12) {
       e.memory.phase = 3;
       tuneRuleWeight(e, 'KeepDistance', 0.8);
       tuneRuleWeight(e, 'Strafe', 0.8);
+      tuneRuleWeight(e, 'LaserSweep', 0.55);
       telegraphPhase(e, 'Phase 3');
     }
   }

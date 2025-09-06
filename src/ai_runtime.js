@@ -51,6 +51,13 @@ export function tickAI(enemy, ctx, dt) {
     } else if (r.name === 'Feint') {
       // occasional feint to disrupt rhythm, more likely when close
       score *= (d < 160 ? 0.8 : 0.3);
+    } else if (r.name === 'SpikeField') {
+      // good when player is mid-range so spikes can zone
+      score *= (d > 120 && d < 320) ? 1.15 : 0.6;
+    } else if (r.name === 'LaserSweep') {
+      // prefer when player is in sight and mid-range
+      score *= (d > 100 && d < 320) ? 1.1 : 0.7;
+      if (!hasLos) score *= 0.8;
     }
 
     // Archetype-specific preference shaping to create distinct behaviors
@@ -74,6 +81,10 @@ export function tickAI(enemy, ctx, dt) {
       if ((enemy.memory?.phase||1) >= 2) {
         if (r.name === 'AreaDeny') score *= 1.15;
         if (r.name === 'Charge') score *= 1.1;
+        if (r.name === 'SpikeField') score *= 1.1;
+      }
+      if ((enemy.memory?.phase||1) >= 3) {
+        if (r.name === 'LaserSweep') score *= 1.15;
       }
     }
 
@@ -93,6 +104,9 @@ export function tickAI(enemy, ctx, dt) {
     const dur = 0.45 * mul;
     enemy.memory.telegraph = { text: chosen.name, timer: dur, duration: dur, color, just: true };
     enemy.memory.flash = 0.14;
+    // Clear one-shot latches for abilities that spawn hazards so they can fire on selection
+    enemy.memory._spikeLatch = false;
+    enemy.memory._laserLatch = false;
   }
 
   // Dodge behavior: if a player bullet is on near-collision course, inject a short evasion burst
