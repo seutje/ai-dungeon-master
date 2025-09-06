@@ -137,7 +137,12 @@ function fixed(dt) {
   // Record logical inputs as bitset for ghost replay
   let bits = 0;
   if (act.Up) bits |= 1; if (act.Down) bits |= 2; if (act.Left) bits |= 4; if (act.Right) bits |= 8; if (act.Dash) bits |= 16;
-  state.recorder.push(bits);
+  // Shooting state is driven by pointer (hold to fire)
+  if (state.firing) bits |= 32;
+  // Record world-space aim position for this step (used by simulator to aim shots)
+  const aimX = state.camera.x + state.mouse.x;
+  const aimY = state.camera.y + state.mouse.y;
+  state.recorder.push(bits, aimX, aimY);
   // Toggle codex
   if (keys['KeyC']) { state.codex.visible = true; }
   if (keys['KeyV']) { state.codex.visible = false; }

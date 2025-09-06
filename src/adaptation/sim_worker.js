@@ -13,12 +13,13 @@ self.onmessage = e => {
   };
   for (let i = 0; i < sim.steps; i++) {
     let bits = sim.inputs[i] || 0;
+    const aim = Array.isArray(sim.aims) ? sim.aims[i] || null : null;
     // Small, fair jitter: occasionally drop or add a direction (5% chance)
     if (rng() < 0.05) {
       const mask = 1 << (Math.floor(rng() * 4) & 3); // one of Up/Down/Left/Right
       bits ^= mask; // toggle
     }
-    stepSimulation(sim, sim.dt, bits);
+    stepSimulation(sim, sim.dt, bits, aim);
   }
   const fit = fitness(sim.log);
   self.postMessage({ id, fitness: fit, fairness: sim.log.unfairFlags || 0, rules });

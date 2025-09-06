@@ -18,7 +18,8 @@ export function captureSnapshot(state) {
     },
     // Record last N inputs; inject small jitter in worker
     steps: horizon, dt: 1/120,
-    inputs: Array.isArray(state.recorder?.log) ? state.recorder.log.slice(-horizon) : []
+    inputs: Array.isArray(state.recorder?.log) ? state.recorder.log.slice(-horizon) : [],
+    aims: Array.isArray(state.recorder?.aim) ? state.recorder.aim.slice(-horizon) : []
   };
 }
 
@@ -70,6 +71,7 @@ export function restoreSnapshot(snap, rules) {
     steps,
     dt,
     inputs: Array.isArray(snap.inputs) ? snap.inputs : [],
+    aims: Array.isArray(snap.aims) ? snap.aims : [],
     projectiles: { list: [], pool: [] },
     log: { dps: 0, controlTime: 0, jitter: 0, economy: 0, unfairFlags: 0 },
     _prev: { ex: enemy.x, ey: enemy.y }
@@ -205,7 +207,7 @@ function applyContactDamage(player, enemy, dt) {
 }
 
 // Headless gameplay step
-export function stepSimulation(sim, dt, inputBits = 0) {
+export function stepSimulation(sim, dt, inputBits = 0, aim = null) {
   // 1) Player input and movement
   handleInputLike(sim.player, inputBits, dt);
   sim.player.x += (sim.player.vx||0) * dt; sim.player.y += (sim.player.vy||0) * dt;
@@ -303,9 +305,13 @@ export function stepSimulation(sim, dt, inputBits = 0) {
       }
     }
   }
-  // Player auto-fire approximation: assumes holding fire toward enemy
-  player._shootCd = (player._shootCd||0) - dt; if (player._shootCd<=0){
-    const vx = enemy.x-player.x, vy = enemy.y-player.y; const L=Math.hypot(vx,vy)||1; const speed=520;
+  // Player shooting from recorded input: fire toward recorded aim (fallback to enemy)
+  player._shootCd = (player._shootCd||0) - dt;
+  const wantFire = !!(inputBits & (1<<5));
+  if (wantFire && player._shootCd <= 0){
+    const tx = (aim && typeof aim.x === 'number') ? aim.x : enemy.x;
+    const ty = (aim && typeof aim.y === 'number') ? aim.y : enemy.y;
+    const vx = tx - player.x, vy = ty - player.y; const L=Math.hypot(vx,vy)||1; const speed=520;
     sim.projectiles.list.push({ x:player.x, y:player.y, vx:(vx/L)*speed, vy:(vy/L)*speed, r:3, damage:12, life:1.2, owner:'player' });
     player._shootCd = 0.18;
   }

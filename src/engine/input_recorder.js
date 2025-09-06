@@ -7,6 +7,7 @@ export const InputBits = {
   Left: 1 << 2,
   Right: 1 << 3,
   Dash: 1 << 4,
+  Fire: 1 << 5,
 };
 
 export function keysToBits(keys) {
@@ -21,9 +22,9 @@ export function keysToBits(keys) {
 
 export function createRecorder() {
   return {
-    log: [],
-    push(bits) { this.log.push(bits|0); },
-    clear() { this.log.length = 0; }
+    log: [],     // bitset per step
+    aim: [],     // {x,y} per step in world coords
+    push(bits, aimX = 0, aimY = 0) { this.log.push(bits|0); this.aim.push({ x: aimX|0, y: aimY|0 }); },
+    clear() { this.log.length = 0; this.aim.length = 0; }
   };
 }
-
