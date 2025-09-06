@@ -117,9 +117,9 @@ It is designed for AI agents or developers to track programming progress.
 
 ## Phase 14 — Content & Polishing
 - [ ] Expand enemy libraries with more actions and archetypes.
-- [ ] Add telegraph visuals and SFX stubs.
-- [ ] Improve room progression pacing (timers, waves, mid-bosses).
-- [ ] Add codex of observed enemy tactics (UI).
+- [x] Add telegraph visuals and SFX stubs.
+- [x] Improve room progression pacing (dynamic room duration, boss longer).
+- [x] Add codex of observed enemy tactics (UI panel, toggle visibility).
 
 ---
 

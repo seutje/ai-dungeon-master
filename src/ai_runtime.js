@@ -60,7 +60,7 @@ export function tickAI(enemy, ctx, dt) {
   // Telegraph on rule switch
   if (prev !== bestIdx) {
     const color = chosen.name === 'Approach' ? '#ffa94d' : '#ffe066';
-    enemy.memory.telegraph = { text: chosen.name, timer: 0.45, duration: 0.45, color };
+    enemy.memory.telegraph = { text: chosen.name, timer: 0.45, duration: 0.45, color, just: true };
     enemy.memory.flash = 0.14;
   }
 }

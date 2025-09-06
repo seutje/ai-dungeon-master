@@ -122,6 +122,6 @@ function tuneRuleWeight(e, name, to) {
   if (r) r.weights = Math.max(0.05, to);
 }
 function telegraphPhase(e, label) {
-  e.memory.telegraph = { text: label, timer: 0.9, duration: 0.9, color: '#79f' };
+  e.memory.telegraph = { text: label, timer: 0.9, duration: 0.9, color: '#79f', just: true };
   e.memory.flash = 0.2;
 }

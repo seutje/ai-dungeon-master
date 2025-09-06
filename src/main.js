@@ -3,7 +3,7 @@ import { createRenderer } from './render/canvas2d.js';
 import { createPlayer, handleInput, stepPlayer } from './game/player.js';
 import { createEnemy, stepEnemy } from './game/enemies.js';
 import { tickAI } from './ai_runtime.js';
-import { createRoom, stepRoom } from './game/rooms.js';
+import { createRoom, stepRoom, roomDuration } from './game/rooms.js';
 import { captureSnapshot } from './adaptation/snapshot.js';
 import { mutatePopulation } from './adaptation/mutate.js';
 import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
@@ -11,6 +11,8 @@ import { CONFIG } from './config.js';
 import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
 import { createRecorder, keysToBits } from './engine/input_recorder.js';
 import { computeSimScale } from './engine/device.js';
+import { initSfx, beep } from './engine/sfx.js';
+import { createCodex, recordAdaptation, renderCodex } from './ui/codex.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
@@ -18,6 +20,7 @@ const R = createRenderer(canvas);
 const keys = Object.create(null);
 window.addEventListener('keydown', e => keys[e.code]=true);
 window.addEventListener('keyup',   e => keys[e.code]=false);
+initSfx();
 
 let state = {
   seed: 12345,
@@ -27,6 +30,7 @@ let state = {
   projectiles: createProjectileSystem(),
   recorder: createRecorder(),
   adaptHistory: [],
+  codex: createCodex(),
   betweenRooms: false
 };
 
@@ -37,7 +41,15 @@ function fixed(dt) {
   handleInput(state.player, keys, dt);
   // Record per-step inputs as bitset for ghost replay
   state.recorder.push(keysToBits(keys));
+  // Toggle codex
+  if (keys['KeyC']) { state.codex.visible = true; }
+  if (keys['KeyV']) { state.codex.visible = false; }
   tickAI(state.enemy, { player: state.player, hazards: state.room.hazards }, dt);
+  // SFX for fresh telegraphs
+  if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.just) {
+    state.enemy.memory.telegraph.just = false;
+    beep( state.enemy.archetype === 'Boss' ? 660 : 880, 0.06, 0.02 );
+  }
   stepPlayer(state.player, dt, R.W, R.H);
   stepEnemy(state.enemy, state.player, dt, (spec) => {
     spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, '#9ad');
@@ -46,7 +58,8 @@ function fixed(dt) {
   // Room hazards update and player-hazard damage
   stepRoom(state.room, dt);
   applyHazardDamage(state.room, state.player, dt);
-  if (state.room.time >= 10) { // end the room after 10s for demo
+  const dur = state.room.duration || roomDuration(state.room.id);
+  if (state.room.time >= dur) {
     endRoomAndAdapt();
   }
 }
@@ -62,7 +75,8 @@ async function endRoomAndAdapt() {
   console.log('[Adapt] Simulating', population.length, 'variants...');
   const { winner, ranked } = await evaluateVariants(snap, baseRules, population);
   console.log('[Adapt] Best fitness:', ranked[0].fitness.toFixed(3), '→ applying winner');
-  // apply winner
+  // apply winner, record codex diff
+  const prevRules = state.enemy.rules.map(r => ({ name: r.name, weights: r.weights }));
   state.enemy.rules = winner.rules.map(r => ({...r}));
   // store recent winners for boss seeding (keep last two)
   state.adaptHistory.push(winner);
@@ -76,6 +90,8 @@ async function endRoomAndAdapt() {
   const t = isBoss ? 'boss' : types[(state.room.id - 1) % types.length];
   const prev = state.enemy;
   state.enemy = createEnemy(t, prev.x, prev.y);
+  // set room duration based on id
+  state.room.duration = roomDuration(state.room.id);
   if (isBoss) {
     // Seed boss rule weights from the average of the last winners
     const winners = state.adaptHistory;
@@ -102,6 +118,8 @@ async function endRoomAndAdapt() {
   state.projectiles.list.length = 0;
   // reset input recorder for new room
   state.recorder.clear();
+  // record codex entry for previous room
+  recordAdaptation(state.codex, state.room.id - 1, prev.archetype || 'Enemy', prevRules, state.enemy.rules);
   state.betweenRooms = false;
 }
 
@@ -167,6 +185,8 @@ function render(alpha) {
     R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
   }
   if (state.betweenRooms) R.text('Adapting...', 420, 24);
+  // Codex panel
+  renderCodex(state.codex, R);
 }
 
 function applyHazardDamage(room, player, dt) {

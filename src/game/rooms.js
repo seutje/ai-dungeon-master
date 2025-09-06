@@ -42,6 +42,12 @@ export function stepRoom(room, dt) {
   }
 }
 
+export function roomDuration(id) {
+  const base = 10 + Math.min(5, Math.max(0, id - 1));
+  const boss = (id % 4 === 0) ? 4 : 0;
+  return base + boss;
+}
+
 // Local PRNG (Mulberry32) for layout determinism per room id
 function mulberry32(seed) {
   let t = seed >>> 0;
