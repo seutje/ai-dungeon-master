@@ -1,7 +1,9 @@
-import { initPool, evaluateVariants } from '../src/adaptation/worker_pool.js';
+import { initPool, evaluateVariants, setWorkerDebug } from '../src/adaptation/worker_pool.js';
+import { loadConfig } from '../src/config.js';
 import { mutatePopulation } from '../src/adaptation/mutate.js';
 
 const logEl = document.getElementById('log');
+logEl.textContent = '';
 function log(msg, cls) {
   const line = document.createElement('div');
   if (cls) line.className = cls;
@@ -42,14 +44,28 @@ function makePopulation(seed, count=24) {
   return mutatePopulation(baseRules(), count, rng);
 }
 
+function withTimeout(promise, ms, label) {
+  let t;
+  const timeout = new Promise((_, rej) => {
+    t = setTimeout(() => rej(new Error(`Timeout: ${label} > ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+}
+
 async function runDeterminism() {
+  // Ensure config (non-blocking if fetch fails)
+  await loadConfig().catch(() => {});
+  log('Initializing worker pool…');
+  setWorkerDebug((e) => log(`[worker] ${e.type}${e.error?': '+e.error:''}`));
   initPool(2);
   const snap = makeSnapshot(12345);
   const popA = makePopulation(999, 24);
   const popB = makePopulation(999, 24); // same seed → same population
 
-  const res1 = await evaluateVariants(snap, baseRules(), popA);
-  const res2 = await evaluateVariants(snap, baseRules(), popB);
+  log('Evaluating population A…');
+  const res1 = await withTimeout(evaluateVariants(snap, baseRules(), popA), 8000, 'Eval A');
+  log('Evaluating population B…');
+  const res2 = await withTimeout(evaluateVariants(snap, baseRules(), popB), 8000, 'Eval B');
 
   const fitness1 = res1.ranked.map(r => r.fitness.toFixed(6));
   const fitness2 = res2.ranked.map(r => r.fitness.toFixed(6));
@@ -61,8 +77,10 @@ async function runDeterminism() {
 
   if (fitnessEqual && winnerEqual) {
     log('PASS: Fitness ordering and winner are identical across runs.', 'pass');
+    document.title = 'PASS — Determinism Test';
   } else {
     log('FAIL: Non-deterministic ordering or winner.', 'fail');
+    document.title = 'FAIL — Determinism Test';
     log('Fitness A: ' + fitness1.join(', '));
     log('Fitness B: ' + fitness2.join(', '));
     log('Winner A: ' + winner1);
@@ -73,5 +91,5 @@ async function runDeterminism() {
 runDeterminism().catch(e => {
   console.error(e);
   log('ERROR: ' + e.message, 'fail');
+  document.title = 'ERROR — Determinism Test';
 });
-
