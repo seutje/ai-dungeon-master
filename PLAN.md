@@ -6,52 +6,52 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 0 — Project Setup
-- [ ] Initialize repository with folder structure (`src/engine`, `src/game`, etc.).
-- [ ] Add **DESIGN.md** and **PLAN.md** documents.
-- [ ] Configure simple static file server run instructions (Node http-server with live-reload).
-- [ ] Implement deterministic PRNG module (`rng.js`).
-- [ ] Implement fixed-step game loop (`time.js`) with `requestAnimationFrame`.
+- [x] Initialize repository with folder structure (`src/engine`, `src/game`, etc.).
+- [x] Add **DESIGN.md** and **PLAN.md** documents.
+- [x] Configure simple static file server run instructions (Node http-server with live-reload).
+- [x] Implement deterministic PRNG module (`rng.js`).
+- [x] Implement fixed-step game loop (`time.js`) with `requestAnimationFrame`.
 
 ---
 
 ## Phase 1 — Rendering & Input
-- [ ] Create `canvas2d.js` for drawing primitives (circles, text, sprites placeholder).
-- [ ] Add main `index.html` with `<canvas>` element and HUD overlay.
-- [ ] Implement basic input handler for keyboard (WASD, arrows, space for dash).
-- [ ] Add FPS counter to HUD.
+- [x] Create `canvas2d.js` for drawing primitives (circles, text, sprites placeholder).
+- [x] Add main `index.html` with `<canvas>` element and HUD overlay.
+- [x] Implement basic input handler for keyboard (WASD, arrows, space for dash).
+- [x] Add FPS counter to HUD.
 
 ---
 
 ## Phase 2 — Player Core
-- [ ] Implement `player.js` with position, velocity, radius, dash cooldown.
-- [ ] Add movement logic (normalize input, clamp to arena bounds).
-- [ ] Add dash logic with speed multiplier and cooldown.
-- [ ] Draw player on canvas.
+- [x] Implement `player.js` with position, velocity, radius, dash cooldown.
+- [x] Add movement logic (normalize input, clamp to arena bounds).
+- [x] Add dash logic with speed multiplier and cooldown.
+- [x] Draw player on canvas.
 
 ---
 
 ## Phase 3 — Enemy Core (Static Rules)
-- [ ] Implement `enemies.js` with a simple archetype (Approach + Strafe weights).
-- [ ] Add `ai_runtime.js` stub to select a rule (based on distance/weights).
-- [ ] Add `stepEnemy` logic to move toward player with orbit modifier.
-- [ ] Draw enemy with color feedback (which rule chosen).
+- [x] Implement `enemies.js` with a simple archetype (Approach + Strafe weights).
+- [x] Add `ai_runtime.js` stub to select a rule (based on distance/weights).
+- [x] Add `stepEnemy` logic to move toward player with orbit modifier.
+- [x] Draw enemy with color feedback (which rule chosen).
 
 ---
 
 ## Phase 4 — Rooms & Progression
-- [ ] Implement `rooms.js` with room timer and clearing condition.
-- [ ] Track room count and show on HUD.
-- [ ] End round automatically after N seconds for demo.
+- [x] Implement `rooms.js` with room timer and clearing condition.
+- [x] Track room count and show on HUD.
+- [x] End round automatically after N seconds for demo.
 
 ---
 
 ## Phase 5 — Adaptation System (Simulation Framework)
-- [ ] Implement `snapshot.js` to capture player/enemy state + seed.
-- [ ] Implement `mutate.js` to nudge enemy rule weights (demo version).
-- [ ] Implement `fitness.js` to score performance metrics.
-- [ ] Implement `sim_worker.js` to restore snapshot and simulate horizon steps.
-- [ ] Implement `worker_pool.js` to spawn worker pool and evaluate variants.
-- [ ] Integrate adaptation: after room ends → capture snapshot → mutate → simulate → pick best → apply rules.
+- [x] Implement `snapshot.js` to capture player/enemy state + seed.
+- [x] Implement `mutate.js` to nudge enemy rule weights (demo version).
+- [x] Implement `fitness.js` to score performance metrics.
+- [x] Implement `sim_worker.js` to restore snapshot and simulate horizon steps.
+- [x] Implement `worker_pool.js` to spawn worker pool and evaluate variants.
+- [x] Integrate adaptation: after room ends → capture snapshot → mutate → simulate → pick best → apply rules.
 
 ---
 
