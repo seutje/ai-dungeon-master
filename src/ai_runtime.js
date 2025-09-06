@@ -34,6 +34,12 @@ export function tickAI(enemy, ctx, dt) {
     } else if (r.name === 'Charge') {
       // prefer mid-range to start a charge
       score *= (d > 90 && d < 220) ? 1.1 : 0.4;
+    } else if (r.name === 'AreaDeny') {
+      // prefer when player shares nearby space or mid-range
+      score *= (d > 80 && d < 260) ? 1.0 : 0.5;
+    } else if (r.name === 'Feint') {
+      // occasional feint to disrupt rhythm, more likely when close
+      score *= (d < 160 ? 0.8 : 0.3);
     }
 
     if (score > bestScore) { bestScore = score; bestIdx = i; }

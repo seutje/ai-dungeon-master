@@ -1,4 +1,4 @@
-import { moveToward, strafeAround, keepDistance, makeCharge, burstFire } from '../actions.js';
+import { moveToward, strafeAround, keepDistance, makeCharge, burstFire, radialBurst, feint } from '../actions.js';
 
 export function createEnemy(type, x, y) {
   // Backward compatibility: if first arg is number, assume old signature
@@ -23,6 +23,20 @@ export function createEnemy(type, x, y) {
         { name:'Strafe',   weights: 0.7, cooldown: 0, cdMs: 260 },
         { name:'Approach', weights: 0.4, cooldown: 0, cdMs: 240 }
       ]
+    };
+  } else if (type === 'boss') {
+    return {
+      ...base,
+      archetype: 'Boss', speed: 150,
+      rules: [
+        { name:'Approach',   weights: 0.9, cooldown: 0, cdMs: 180 },
+        { name:'Strafe',     weights: 0.6, cooldown: 0, cdMs: 260 },
+        { name:'KeepDistance', weights: 0.5, cooldown: 0, cdMs: 280 },
+        { name:'Charge',     weights: 0.4, cooldown: 0, cdMs: 800 },
+        { name:'AreaDeny',   weights: 0.3, cooldown: 0, cdMs: 900 },
+        { name:'Feint',      weights: 0.2, cooldown: 0, cdMs: 700 }
+      ],
+      memory: { lastChoose: 0, phase: 1, phaseTimer: 0 }
     };
   }
   // default grunt
@@ -53,6 +67,19 @@ export function stepEnemy(e, player, dt, emitProjectile) {
     if (!e.memory.charge) e.memory.charge = makeCharge({ windup_ms: 220, duration_ms: 420, mul: 3.0 });
     const done = e.memory.charge.update(e, player, dt, e.speed);
     if (done) e.memory.charge = null; // finished charge
+  } else if (name === 'AreaDeny') {
+    if (emitProjectile) {
+      e.memory.burstCd = (e.memory.burstCd || 0) - dt;
+      if (e.memory.burstCd <= 0) {
+        const shots = radialBurst({ x: e.x, y: e.y }, 10 + (e.memory.phase||1)*2, 340 + (e.memory.phase||1)*30);
+        for (const s of shots) emitProjectile(s);
+        e.memory.burstCd = 1.2;
+      }
+    }
+  } else if (name === 'Feint') {
+    e.memory.feint = e.memory.feint || feint(250);
+    e.memory.feint.remaining -= dt;
+    if (e.memory.feint.remaining <= 0) e.memory.feint = null;
   } else {
     // Fallback behavior
     const v = moveToward(e, player.x, player.y, e.speed, 0.8, dt);
@@ -70,4 +97,31 @@ export function stepEnemy(e, player, dt, emitProjectile) {
       e.memory.shootCd = 0.9;
     }
   }
+
+  // Boss multi-phase progression driven by time gates
+  if (e.archetype === 'Boss') {
+    e.memory.phase = e.memory.phase || 1;
+    e.memory.phaseTimer = (e.memory.phaseTimer || 0) + dt;
+    if (e.memory.phase === 1 && e.memory.phaseTimer > 6) {
+      e.memory.phase = 2;
+      // unlock stronger offense
+      tuneRuleWeight(e, 'Charge', 0.6);
+      tuneRuleWeight(e, 'AreaDeny', 0.6);
+      telegraphPhase(e, 'Phase 2');
+    } else if (e.memory.phase === 2 && e.memory.phaseTimer > 12) {
+      e.memory.phase = 3;
+      tuneRuleWeight(e, 'KeepDistance', 0.8);
+      tuneRuleWeight(e, 'Strafe', 0.8);
+      telegraphPhase(e, 'Phase 3');
+    }
+  }
+}
+
+function tuneRuleWeight(e, name, to) {
+  const r = e.rules.find(r => r.name === name);
+  if (r) r.weights = Math.max(0.05, to);
+}
+function telegraphPhase(e, label) {
+  e.memory.telegraph = { text: label, timer: 0.9, duration: 0.9, color: '#79f' };
+  e.memory.flash = 0.2;
 }

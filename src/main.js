@@ -24,6 +24,7 @@ let state = {
   enemy: createEnemy('grunt', R.W*0.75, R.H*0.5),
   projectiles: createProjectileSystem(),
   recorder: createRecorder(),
+  adaptHistory: [],
   betweenRooms: false
 };
 
@@ -57,14 +58,40 @@ async function endRoomAndAdapt() {
   console.log('[Adapt] Best fitness:', ranked[0].fitness.toFixed(3), '→ applying winner');
   // apply winner
   state.enemy.rules = winner.rules.map(r => ({...r}));
+  // store recent winners for boss seeding (keep last two)
+  state.adaptHistory.push(winner);
+  if (state.adaptHistory.length > 2) state.adaptHistory.shift();
   // next room
   state.room = createRoom(state.room.id + 1, R.W, R.H);
   document.getElementById('room').textContent = String(state.room.id);
   // rotate archetype to showcase variety
-  const types = ['grunt', 'ranged', 'support'];
-  const t = types[(state.room.id - 1) % types.length];
+  const isBoss = (state.room.id % 4 === 0);
+  const types = isBoss ? ['boss'] : ['grunt', 'ranged', 'support'];
+  const t = isBoss ? 'boss' : types[(state.room.id - 1) % types.length];
   const prev = state.enemy;
   state.enemy = createEnemy(t, prev.x, prev.y);
+  if (isBoss) {
+    // Seed boss rule weights from the average of the last winners
+    const winners = state.adaptHistory;
+    if (winners.length) {
+      const avg = new Map(); const count = new Map();
+      for (const w of winners) {
+        (w.rules||[]).forEach((r) => {
+          const k = r.name || '';
+          if (!avg.has(k)) { avg.set(k, 0); count.set(k, 0); }
+          avg.set(k, avg.get(k) + (r.weights||0)); count.set(k, count.get(k)+1);
+        });
+      }
+      for (const r of state.enemy.rules) {
+        if (avg.has(r.name)) {
+          r.weights = (avg.get(r.name) / count.get(r.name)) * 0.9 + r.weights * 0.1;
+        }
+      }
+    }
+    // Initialize phase state
+    state.enemy.memory.phase = 1;
+    state.enemy.memory.phaseTimer = 0;
+  }
   // clear projectiles between rooms
   state.projectiles.list.length = 0;
   // reset input recorder for new room
@@ -102,6 +129,9 @@ function render(alpha) {
   R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 46);
   R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 64);
   R.text(`Player HP: ${state.player.hp.toFixed(0)}`, 12, 84);
+  if (state.enemy.archetype === 'Boss') {
+    R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
+  }
   if (state.betweenRooms) R.text('Adapting...', 420, 24);
 }
 

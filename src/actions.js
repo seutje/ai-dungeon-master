@@ -88,3 +88,15 @@ export function keepDistance(e, target, baseSpeed, desired = 220, dt) {
     e.x += vx * dt; e.y += vy * dt; return { vx, vy };
   }
 }
+
+// Radial burst: spawn projectiles in a circle from origin.
+export function radialBurst(origin, bullets = 8, speed = 380) {
+  const shots = [];
+  for (let i = 0; i < bullets; i++) {
+    const a = (i / bullets) * Math.PI * 2;
+    const vx = Math.cos(a) * speed;
+    const vy = Math.sin(a) * speed;
+    shots.push({ x: origin.x, y: origin.y, vx, vy });
+  }
+  return shots;
+}

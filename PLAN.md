@@ -87,9 +87,9 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 10 — Bosses & Multi-Phase Adaptation
-- [ ] Implement Boss archetype with larger rule set and multiple phases.
-- [ ] Add phase-gated unlock of new operators (e.g., feints, area denial).
-- [ ] Store memory of last 2 rooms for seeding boss adaptation.
+- [x] Implement Boss archetype with larger rule set and multiple phases.
+- [x] Add phase-gated unlock of new operators (feint, area denial).
+- [x] Store memory of last 2 rooms for seeding boss adaptation.
 
 ---
 
