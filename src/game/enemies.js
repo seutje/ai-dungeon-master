@@ -29,7 +29,7 @@ export function createEnemy(type, x, y) {
     return {
       ...base,
       archetype: 'Boss', speed: 150,
-      hp: 180, maxHp: 180,
+      hp: 120, maxHp: 120,
       rules: [
         // Phase 1 core kit
         { name:'Approach',     weights: 0.9, cooldown: 0, cdMs: 180 },
