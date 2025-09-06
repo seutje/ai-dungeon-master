@@ -66,7 +66,15 @@ function render(alpha) {
   // Telegraph text near enemy when switching actions
   if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.timer > 0) {
     const t = state.enemy.memory.telegraph;
-    R.text(t.text, state.enemy.x - 22, state.enemy.y - 18, t.color);
+    const a = Math.max(0, Math.min(1, t.timer / (t.duration || 0.45)));
+    const ringR = state.enemy.r + 4 + (1 - a) * 18;
+    R.ring(state.enemy.x, state.enemy.y, ringR, t.color, 2, a * 0.85);
+    // Label above enemy with fade
+    const tx = Math.max(8, Math.min(R.W - 120, state.enemy.x - 22));
+    const ty = Math.max(20, state.enemy.y - 18);
+    const bg = `rgba(0,0,0,${0.45 * a + 0.15})`;
+    // Slightly dim text as it fades
+    R.textWithBg(t.text, tx, ty, t.color, bg);
   }
   R.text('Approach weight: ' + state.enemy.rules[0].weights.toFixed(2), 12, 28);
   R.text('Strafe weight:   ' + state.enemy.rules[1].weights.toFixed(2), 12, 46);
