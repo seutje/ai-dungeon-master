@@ -15,3 +15,15 @@ export function seedFromString(s) {
   }
   return h >>> 0;
 }
+
+// Approximate ISO week-based seed for current week (UTC)
+export function weekSeed(date = new Date()) {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNum = d.getUTCDay() || 7; // 1..7
+  // Thursday in current week decides the year.
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  const key = `${d.getUTCFullYear()}-W${weekNo}`;
+  return seedFromString(key);
+}

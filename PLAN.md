@@ -140,8 +140,8 @@ It is designed for AI agents or developers to track programming progress.
 
 ## Phase 17 — Post-Launch Extensions (Optional)
 - [ ] Add WebGL2 renderer for effects/particles.
-- [ ] Add modding hooks for rule DSL & config loading.
-- [ ] Add weekly mutator seeds system.
+- [x] Add modding hooks for rule DSL & config loading.
+- [x] Add weekly mutator seeds system.
 
 ---
 

@@ -14,6 +14,8 @@ import { computeSimScale } from './engine/device.js';
 import { initSfx, beep } from './engine/sfx.js';
 import { createCodex, recordAdaptation, renderCodex } from './ui/codex.js';
 import { createSettings, saveSettings, telegraphMultiplier, palette, keymap } from './ui/settings.js';
+import { mulberry32, weekSeed } from './engine/rng.js';
+import { loadModRules, getRulesOverride } from './data/mod.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
@@ -22,6 +24,8 @@ const keys = Object.create(null);
 window.addEventListener('keydown', e => keys[e.code]=true);
 window.addEventListener('keyup',   e => keys[e.code]=false);
 initSfx();
+// Fire-and-forget load of optional rule overrides
+loadModRules();
 
 let state = {
   seed: 12345,
@@ -90,7 +94,9 @@ async function endRoomAndAdapt() {
   const isCurrentBoss = state.enemy.archetype === 'Boss';
   const baseSim = isCurrentBoss ? (CONFIG.SIM_COUNT_BOSS||96) : (CONFIG.SIM_COUNT_NORMAL||32);
   const simCount = Math.max(8, Math.round(baseSim * computeSimScale()));
-  const population = mutatePopulation(baseRules, simCount);
+  // Weekly-seeded RNG to vary mutations week-by-week (but deterministic per week)
+  const rng = mulberry32((weekSeed() ^ state.seed ^ state.room.id) >>> 0);
+  const population = mutatePopulation(baseRules, simCount, rng);
   console.log('[Adapt] Simulating', population.length, 'variants...');
   const { winner, ranked } = await evaluateVariants(snap, baseRules, population);
   const fairMax = CONFIG.FAIRNESS_MAX ?? 0.02;
@@ -115,6 +121,11 @@ async function endRoomAndAdapt() {
   const t = isBoss ? 'boss' : types[(state.room.id - 1) % types.length];
   const prev = state.enemy;
   state.enemy = createEnemy(t, prev.x, prev.y);
+  // Apply mod override if present for this archetype
+  const ov = getRulesOverride(state.enemy.archetype || t);
+  if (ov && Array.isArray(ov.rules)) {
+    state.enemy.rules = ov.rules.map(r => ({...r}));
+  }
   // set room duration based on id
   state.room.duration = roomDuration(state.room.id);
   if (isBoss) {
