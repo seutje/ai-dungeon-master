@@ -59,8 +59,15 @@ function render(alpha) {
   // Player
   R.circle(state.player.x, state.player.y, state.player.r, '#4fb', '#2aa');
   // Enemy (color shows which rule was last selected by dummy AI)
-  const col = state.enemy.memory.lastChoose === 0 ? '#f95' : '#fd6';
-  R.circle(state.enemy.x, state.enemy.y, state.enemy.r, col, '#a53');
+  const baseCol = state.enemy.memory.lastChoose === 0 ? '#f95' : '#fd6';
+  const flashing = state.enemy.memory.flash && state.enemy.memory.flash > 0;
+  const fillCol = flashing ? '#fff' : baseCol;
+  R.circle(state.enemy.x, state.enemy.y, state.enemy.r, fillCol, '#a53');
+  // Telegraph text near enemy when switching actions
+  if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.timer > 0) {
+    const t = state.enemy.memory.telegraph;
+    R.text(t.text, state.enemy.x - 22, state.enemy.y - 18, t.color);
+  }
   R.text('Approach weight: ' + state.enemy.rules[0].weights.toFixed(2), 12, 28);
   R.text('Strafe weight:   ' + state.enemy.rules[1].weights.toFixed(2), 12, 46);
   if (state.betweenRooms) R.text('Adapting...', 420, 24);

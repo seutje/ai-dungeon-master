@@ -5,6 +5,12 @@ export function tickAI(enemy, ctx, dt) {
   for (const r of enemy.rules) {
     if (r.cooldown && r.cooldown > 0) r.cooldown = Math.max(0, r.cooldown - dt);
   }
+  // Decay telegraph/flash timers
+  enemy.memory = enemy.memory || {};
+  if (enemy.memory.flash && enemy.memory.flash > 0) enemy.memory.flash = Math.max(0, enemy.memory.flash - dt);
+  if (enemy.memory.telegraph && enemy.memory.telegraph.timer > 0) {
+    enemy.memory.telegraph.timer = Math.max(0, enemy.memory.telegraph.timer - dt);
+  }
 
   const d = Math.hypot(ctx.player.x - enemy.x, ctx.player.y - enemy.y);
 
@@ -25,10 +31,18 @@ export function tickAI(enemy, ctx, dt) {
     if (score > bestScore) { bestScore = score; bestIdx = i; }
   }
 
+  const prev = enemy.memory.lastChoose;
   enemy.memory.lastChoose = bestIdx;
   // Apply cooldown for the chosen rule
   const chosen = enemy.rules[bestIdx];
   chosen.cooldown = (chosen.cdMs ? chosen.cdMs : 250) / 1000;
+
+  // Telegraph on rule switch
+  if (prev !== bestIdx) {
+    const color = chosen.name === 'Approach' ? '#ffa94d' : '#ffe066';
+    enemy.memory.telegraph = { text: chosen.name, timer: 0.35, color };
+    enemy.memory.flash = 0.18;
+  }
 }
 
 function isBlacklisted(rule, distance) {

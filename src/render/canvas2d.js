@@ -10,8 +10,8 @@ export function createRenderer(canvas) {
     if (fill) { ctx.fillStyle = fill; ctx.fill(); }
     if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
   }
-  function text(s, x, y) {
-    ctx.fillStyle = '#eaeaea'; ctx.font = '14px system-ui, sans-serif'; ctx.fillText(s, x, y);
+  function text(s, x, y, color = '#eaeaea') {
+    ctx.fillStyle = color; ctx.font = '14px system-ui, sans-serif'; ctx.fillText(s, x, y);
   }
   return { clear, circle, text, W, H };
 }

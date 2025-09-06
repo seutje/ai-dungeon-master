@@ -59,7 +59,7 @@ It is designed for AI agents or developers to track programming progress.
 - [x] Create `actions.js` with reusable atoms: `Move`, `Strafe`, `Charge`, `BurstFire`, `Feint`.
 - [x] Extend `ai_runtime.js` to evaluate conditions and actions more formally.
 - [x] Add cooldowns and blacklists to rules.
-- [ ] Implement simple telegraphs (color flash, text indicators).
+- [x] Implement simple telegraphs (color flash, text indicators).
 
 ---
 
