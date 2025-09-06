@@ -1,7 +1,10 @@
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   let W = canvas.width, H = canvas.height;
-  let fontPx = 18;
+  // Increased default font size for all canvas text
+  let fontPx = 22;
+  // Line height multiplier controls vertical spacing between lines
+  let lineMult = 1.3; // ~28px at 22px font
   function clear() {
     ctx.fillStyle = '#0e0e13';
     ctx.fillRect(0, 0, W, H);
@@ -19,7 +22,7 @@ export function createRenderer(canvas) {
     ctx.font = fontPx + 'px system-ui, sans-serif';
     const padX = 6, padY = 3;
     const w = Math.ceil(ctx.measureText(s).width);
-    const h = Math.ceil(fontPx * 1.1); // approx line height
+    const h = Math.ceil(fontPx * lineMult); // line height in px
     ctx.fillStyle = bg;
     ctx.fillRect(Math.floor(x - padX), Math.floor(y - h + padY), w + padX*2, h + padY*2);
     ctx.fillStyle = color;
@@ -48,9 +51,11 @@ export function createRenderer(canvas) {
     H = canvas.height;
   }
   function setTextSize(px) { fontPx = Math.max(10, Math.min(48, px|0)); }
+  function setLineHeight(mult) { lineMult = Math.max(1.0, Math.min(2.0, Number(mult) || lineMult)); }
+  function lineHeightPx() { return Math.ceil(fontPx * lineMult); }
   function rect(x, y, w, h, fill, stroke) {
     if (fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); }
     if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h); }
   }
-  return { clear, circle, text, textWithBg, ring, rect, setTextSize, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
+  return { clear, circle, text, textWithBg, ring, rect, setTextSize, setLineHeight, lineHeightPx, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
 }

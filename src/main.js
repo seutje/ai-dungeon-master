@@ -21,7 +21,8 @@ import { saveBestPerformer, clearBestPerformers } from './data/persistence.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
-R.setTextSize(18);
+// Increase global canvas text size
+R.setTextSize(30);
 function resizeCanvasToWindow() {
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
   const w = Math.floor(window.innerWidth * dpr);
@@ -283,31 +284,32 @@ function render(alpha) {
   R.clear();
   // Colors
   const pal = palette(state.settings);
+  const lh = R.lineHeightPx();
   // Start screen overlay
   if (!state.started) {
     // Dim background
     R.rect(0, 0, R.W, R.H, 'rgba(0,0,0,0.6)');
     const cx = Math.floor(R.W/2) - 220;
     let y = Math.floor(R.H/2) - 120;
-    R.textWithBg('AI Dungeon Master', cx, y, '#fff', 'rgba(0,0,0,0.55)'); y += 26;
-    R.text('How to Play', cx, y, '#aef'); y += 22;
-    R.text('- Move: WASD / Arrows (toggle VIM with M)', cx, y); y += 20;
-    R.text('- Dash: Space (brief invulnerability)', cx, y); y += 20;
-    R.text('- Shoot: Click (aim with mouse)', cx, y); y += 20;
+    R.textWithBg('AI Dungeon Master', cx, y, '#fff', 'rgba(0,0,0,0.55)'); y += lh;
+    R.text('How to Play', cx, y, '#aef'); y += lh;
+    R.text('- Move: WASD / Arrows (toggle VIM with M)', cx, y); y += lh;
+    R.text('- Dash: Space (brief invulnerability)', cx, y); y += lh;
+    R.text('- Shoot: Click (aim with mouse)', cx, y); y += lh;
     y += 6;
-    R.text('Goal', cx, y, '#aef'); y += 22;
-    R.text('- Defeat the enemy to clear the room', cx, y); y += 20;
-    R.text('- Every 4th room is a boss', cx, y); y += 20;
-    R.text('- Survive hazards and bullets; HP at top of units', cx, y); y += 20;
+    R.text('Goal', cx, y, '#aef'); y += lh;
+    R.text('- Defeat the enemy to clear the room', cx, y); y += lh;
+    R.text('- Every 4th room is a boss', cx, y); y += lh;
+    R.text('- Survive hazards and bullets; HP at top of units', cx, y); y += lh;
     y += 6;
-    R.text('Tips', cx, y, '#aef'); y += 22;
-    R.text('- Enemies adapt between rooms — keep them guessing', cx, y); y += 20;
-    R.text('- T: change telegraph intensity, B: color mode, C/V: Codex', cx, y); y += 20;
+    R.text('Tips', cx, y, '#aef'); y += lh;
+    R.text('- Enemies adapt between rooms — keep them guessing', cx, y); y += lh;
+    R.text('- T: change telegraph intensity, B: color mode, C/V: Codex', cx, y); y += lh;
     y += 12;
     const msg = 'Press Enter or Click to Start';
-    const bx = Math.floor(R.W/2) - 140, by = y + 8;
-    R.rect(bx, by, 280, 30, 'rgba(255,255,255,0.08)', '#666');
-    R.text(msg, bx + 16, by + 20, '#eaeaea');
+    const tx = Math.floor(R.W/2) - 124; // rough centering for this message
+    const ty = y + 8 + 20;
+    R.text(msg, tx, ty, '#eaeaea');
     // Also draw Reset Best button so it’s available on start screen
     drawResetButton(R);
     return;
@@ -366,11 +368,11 @@ function render(alpha) {
   R.endWorld();
   const r0 = state.enemy.rules[0];
   const r1 = state.enemy.rules[1];
-  R.text('Score: ' + (state.score|0), 12, 18);
-  R.text('Room: ' + state.room.id + '  FPS: ' + (state.fps||0), 12, 18 + 18);
-  R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, 18 + 18*2);
-  R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 18 + 18*3);
-  R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 18 + 18*4);
+  R.text('Score: ' + (state.score|0), 12, Math.round(lh * 1));
+  R.text('Room: ' + state.room.id + '  FPS: ' + (state.fps||0), 12, Math.round(lh * 2));
+  R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, Math.round(lh * 3));
+  R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, Math.round(lh * 4));
+  R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, Math.round(lh * 5));
 
   drawResetButton(R);
   if (state.enemy.archetype === 'Boss') {
