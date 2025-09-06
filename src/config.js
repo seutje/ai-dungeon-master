@@ -8,6 +8,8 @@ const CONFIG = {
   FITNESS_WEIGHTS: { dps: 1.0, control: 0.6, economy: 0.3, jitter: -0.5, unfair: -2.0 },
   ADAPT_BUDGET_PER_ROOM: 3,
   EARLY_GAME_LEARNING_MULTIPLIER: 0.5,
+  FAIRNESS_MAX: 0.02,
+  RULE_WEIGHT_MAX: 1.6,
 };
 export async function loadConfig() {
   try {

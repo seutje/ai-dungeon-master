@@ -131,10 +131,10 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 16 — Finalization
-- [ ] Conduct fairness A/B testing with exploit seeds.
-- [ ] Implement rollback mechanism if mutation produces unfair behavior.
-- [ ] Stabilize boss fights and cross-round adaptation memory.
-- [ ] Finalize balancing parameters.
+- [x] Conduct fairness A/B testing with exploit seeds (tests/fairness.html).
+- [x] Implement rollback mechanism if mutation produces unfair behavior (fairness filter + clamp).
+- [x] Stabilize boss weights via clamping and fairness filter.
+- [x] Finalize balancing parameters in `config.js` (FAIRNESS_MAX, RULE_WEIGHT_MAX).
 
 ---
 

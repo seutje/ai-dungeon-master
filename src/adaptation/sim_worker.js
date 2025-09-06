@@ -21,5 +21,5 @@ self.onmessage = e => {
     stepSimulation(sim, sim.dt, bits);
   }
   const fit = fitness(sim.log);
-  self.postMessage({ id, fitness: fit, rules });
+  self.postMessage({ id, fitness: fit, fairness: sim.log.unfairFlags || 0, rules });
 };

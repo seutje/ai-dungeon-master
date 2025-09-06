@@ -93,12 +93,17 @@ async function endRoomAndAdapt() {
   const population = mutatePopulation(baseRules, simCount);
   console.log('[Adapt] Simulating', population.length, 'variants...');
   const { winner, ranked } = await evaluateVariants(snap, baseRules, population);
-  console.log('[Adapt] Best fitness:', ranked[0].fitness.toFixed(3), '→ applying winner');
-  // apply winner, record codex diff
+  const fairMax = CONFIG.FAIRNESS_MAX ?? 0.02;
+  const chosen = ranked.find(r => (r.fairness || 0) <= fairMax) || ranked[0];
+  console.log('[Adapt] Best fitness:', ranked[0].fitness.toFixed(3), 'Fair:', (ranked[0].fairness||0).toFixed(4), '→ applying', chosen===ranked[0]?'top':'next fair');
+  // apply winner (fair-filtered), record codex diff
   const prevRules = state.enemy.rules.map(r => ({ name: r.name, weights: r.weights }));
-  state.enemy.rules = winner.rules.map(r => ({...r}));
+  state.enemy.rules = chosen.rules.map(r => ({...r}));
+  // Clamp rule weights to safe max
+  const wmax = CONFIG.RULE_WEIGHT_MAX || 1.6;
+  for (const r of state.enemy.rules) { if (r.weights > wmax) r.weights = wmax; if (r.weights < 0.05) r.weights = 0.05; }
   // store recent winners for boss seeding (keep last two)
-  state.adaptHistory.push(winner);
+  state.adaptHistory.push(chosen);
   if (state.adaptHistory.length > 2) state.adaptHistory.shift();
   // next room
   state.room = createRoom(state.room.id + 1, R.W, R.H);
