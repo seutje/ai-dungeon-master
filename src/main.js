@@ -266,6 +266,9 @@ function render(alpha) {
   const flashing = state.enemy.memory.flash && state.enemy.memory.flash > 0;
   const fillCol = flashing ? '#fff' : baseCol;
   R.circle(state.enemy.x, state.enemy.y, state.enemy.r, fillCol, pal.enemyStroke);
+  // Health bars (world-space) for player and enemy
+  drawHealthBar(R, state.player.x, state.player.y - state.player.r - 10, Math.max(28, state.player.r*2), 4, state.player.hp, state.player.maxHp || 100);
+  drawHealthBar(R, state.enemy.x, state.enemy.y - state.enemy.r - 10, Math.max(28, state.enemy.r*2), 4, state.enemy.hp, state.enemy.maxHp || 60);
   // Projectiles
   renderProjectiles(state.projectiles, R);
   // Telegraph near enemy (world-space)
@@ -287,13 +290,10 @@ function render(alpha) {
   R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, 28);
   R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 46);
   R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 64);
-  R.text(`Player HP: ${state.player.hp.toFixed(0)}`, 12, 84);
   if (state.enemy.archetype === 'Boss') {
     R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
   }
-  // Enemy HP on HUD (avoid overlap with Boss Phase line)
-  const enemyHpY = (state.enemy.archetype === 'Boss') ? 124 : 104;
-  R.text(`Enemy HP: ${Math.max(0, state.enemy.hp).toFixed(0)}`, 12, enemyHpY);
+  // Removed HUD HP text; health shown above entities
   if (state.betweenRooms) R.text('Adapting...', 420, 24);
   if (state.gameOver) {
     R.textWithBg('GAME OVER', R.W*0.5 - 60, R.H*0.5, '#fff', 'rgba(0,0,0,0.5)');
@@ -372,3 +372,16 @@ function applyContactDamage(player, enemy, dt) {
 }
 
 start({ fixed, render });
+
+// Helper: draw simple health bar in world-space
+function drawHealthBar(R, cx, cy, w, h, hp, maxHp) {
+  const ratio = Math.max(0, Math.min(1, (maxHp > 0 ? hp / maxHp : 0)));
+  const x = Math.floor(cx - w/2);
+  const y = Math.floor(cy - h/2);
+  R.rect(x, y, w, h, 'rgba(0,0,0,0.5)');
+  if (ratio > 0) {
+    const fw = Math.max(1, Math.floor(w * ratio));
+    const color = ratio > 0.5 ? '#40d370' : ratio > 0.25 ? '#f5c044' : '#ef5a5a';
+    R.rect(x, y, fw, h, color);
+  }
+}

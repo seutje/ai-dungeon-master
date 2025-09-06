@@ -1,5 +1,6 @@
 export function createPlayer(x, y) {
-  return { x, y, r: 12, speed: 200, dashCd: 0, dashTime: 0, vx:0, vy:0, hp: 100, invuln: 0, shootCd: 0 };
+  const maxHp = 100;
+  return { x, y, r: 12, speed: 200, dashCd: 0, dashTime: 0, vx:0, vy:0, hp: maxHp, maxHp, invuln: 0, shootCd: 0 };
 }
 export function handleInput(p, keys, dt) {
   // keys here are logical actions: { Up, Down, Left, Right, Dash }

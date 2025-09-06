@@ -5,7 +5,7 @@ export function createEnemy(type, x, y) {
   if (typeof type === 'number') {
     return createEnemy('grunt', type, x);
   }
-  const base = { x, y, r: 12, vx: 0, vy: 0, memory: { lastChoose: 0 }, hp: 60 };
+  const base = { x, y, r: 12, vx: 0, vy: 0, memory: { lastChoose: 0 }, hp: 60, maxHp: 60 };
   if (type === 'ranged') {
     return {
       ...base,
