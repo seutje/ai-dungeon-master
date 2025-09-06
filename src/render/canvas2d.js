@@ -1,6 +1,6 @@
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
+  let W = canvas.width, H = canvas.height;
   function clear() {
     ctx.fillStyle = '#0e0e13';
     ctx.fillRect(0, 0, W, H);
@@ -35,5 +35,16 @@ export function createRenderer(canvas) {
     ctx.stroke();
     ctx.restore();
   }
-  return { clear, circle, text, textWithBg, ring, W, H };
+  function beginWorld(camX, camY) {
+    ctx.save();
+    ctx.translate(-Math.floor(camX), -Math.floor(camY));
+  }
+  function endWorld() {
+    ctx.restore();
+  }
+  function resize() {
+    W = canvas.width;
+    H = canvas.height;
+  }
+  return { clear, circle, text, textWithBg, ring, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
 }

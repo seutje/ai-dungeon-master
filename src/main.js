@@ -19,6 +19,17 @@ import { loadModRules, getRulesOverride } from './data/mod.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
+function resizeCanvasToWindow() {
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const w = Math.floor(window.innerWidth * dpr);
+  const h = Math.floor(window.innerHeight * dpr);
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h; R.resize();
+    canvas.style.width = '100%'; canvas.style.height = '100%';
+  }
+}
+window.addEventListener('resize', resizeCanvasToWindow);
+resizeCanvasToWindow();
 
 const keys = Object.create(null);
 window.addEventListener('keydown', e => keys[e.code]=true);
@@ -27,11 +38,15 @@ initSfx();
 // Fire-and-forget load of optional rule overrides
 loadModRules();
 
+// World size independent from viewport
+const WORLD_W = 2000;
+const WORLD_H = 1200;
+
 let state = {
   seed: 12345,
-  room: createRoom(1, R.W, R.H),
-  player: createPlayer(R.W*0.25, R.H*0.5),
-  enemy: createEnemy('grunt', R.W*0.75, R.H*0.5),
+  room: createRoom(1, WORLD_W, WORLD_H),
+  player: createPlayer(WORLD_W*0.25, WORLD_H*0.5),
+  enemy: createEnemy('grunt', WORLD_W*0.75, WORLD_H*0.5),
   projectiles: createProjectileSystem(),
   recorder: createRecorder(),
   adaptHistory: [],
@@ -42,7 +57,8 @@ let state = {
   gameOver: false,
   score: 0,
   firing: false,
-  mouse: { x: R.W * 0.5, y: R.H * 0.5 }
+  mouse: { x: R.W * 0.5, y: R.H * 0.5 },
+  camera: { x: 0, y: 0 }
 };
 
 initPool();
@@ -86,14 +102,17 @@ function fixed(dt) {
     state.enemy.memory.telegraph.just = false;
     beep( state.enemy.archetype === 'Boss' ? 660 : 880, 0.06, 0.02 );
   }
-  stepPlayer(state.player, dt, R.W, R.H);
+  stepPlayer(state.player, dt, state.room.W, state.room.H);
   stepEnemy(state.enemy, state.player, dt, (spec) => {
     spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, '#9ad', 'enemy');
   });
   // Player shooting (hold to fire toward mouse)
   if (state.firing && state.player.shootCd <= 0) {
-    const dx = state.mouse.x - state.player.x;
-    const dy = state.mouse.y - state.player.y;
+    // Convert mouse screen coords to world by adding camera offset
+    const targetX = state.camera.x + state.mouse.x;
+    const targetY = state.camera.y + state.mouse.y;
+    const dx = targetX - state.player.x;
+    const dy = targetY - state.player.y;
     const len = Math.hypot(dx, dy) || 1;
     const speed = 520;
     const vx = (dx/len) * speed;
@@ -102,7 +121,7 @@ function fixed(dt) {
     state.player.shootCd = 0.18;
   }
   stepProjectiles(
-    state.projectiles, dt, R.W, R.H,
+    state.projectiles, dt, state.room.W, state.room.H,
     state.player, state.enemy,
     (dmg)=>{ state.score += Math.round(dmg * 0.5); },
     ()=>{ state.score += 100; }
@@ -157,8 +176,8 @@ async function endRoomAndAdapt() {
   // store recent winners for boss seeding (keep last two)
   state.adaptHistory.push(chosenVariant);
   if (state.adaptHistory.length > 2) state.adaptHistory.shift();
-  // next room
-  state.room = createRoom(state.room.id + 1, R.W, R.H);
+  // next room (world-sized, independent of viewport)
+  state.room = createRoom(state.room.id + 1, WORLD_W, WORLD_H);
   document.getElementById('room').textContent = String(state.room.id);
   // rotate archetype to showcase variety
   const isBoss = (state.room.id % 4 === 0);
@@ -208,16 +227,18 @@ function render(alpha) {
   R.clear();
   // Colors
   const pal = palette(state.settings);
+  // Update camera and clamp to world
+  state.camera.x = Math.max(0, Math.min(state.room.W - R.W, state.player.x - R.W * 0.5));
+  state.camera.y = Math.max(0, Math.min(state.room.H - R.H, state.player.y - R.H * 0.5));
+
+  // World-space draw
+  R.beginWorld(state.camera.x, state.camera.y);
   // Player
   R.circle(state.player.x, state.player.y, state.player.r, pal.playerFill, pal.playerStroke);
   // Obstacles
   for (const ob of state.room.obstacles || []) {
-    R.circle(ob.x, ob.y, 0, undefined, undefined); // noop to keep context consistent
-    // draw as rounded rect via filled rects approximation
-    // simpler: just draw rectangle borders using text background helper
-    // but we'll use circle strokes for performance; instead, fill rect with a dull color
+    R.circle(ob.x, ob.y, 0, undefined, undefined);
     const x = ob.x, y = ob.y, w = ob.w, h = ob.h;
-    // draw rectangle
     R.textWithBg('', x, y + h, '#0000', 'rgba(255,255,255,0.06)');
   }
   // Hazards
@@ -230,8 +251,6 @@ function render(alpha) {
       const x2 = h.cx + Math.cos(h.angle) * h.len;
       const y2 = h.cy + Math.sin(h.angle) * h.len;
       R.ring(x1, y1, 6, '#a8a', 2, 0.6);
-      // draw the beam as a wide line via multiple rings approximation: use textWithBg hack to draw backdrop
-      // Instead, approximate with small circles along the segment
       const segs = 20; const dx = (x2 - x1)/segs, dy = (y2 - y1)/segs;
       for (let i = 0; i <= segs; i++) {
         R.circle(x1 + dx*i, y1 + dy*i, (h.width||8)/2, '#a6f', '#84c');
@@ -245,20 +264,19 @@ function render(alpha) {
   R.circle(state.enemy.x, state.enemy.y, state.enemy.r, fillCol, pal.enemyStroke);
   // Projectiles
   renderProjectiles(state.projectiles, R);
-  // Telegraph text near enemy when switching actions
+  // Telegraph near enemy (world-space)
   if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.timer > 0) {
     const t = state.enemy.memory.telegraph;
     const a = Math.max(0, Math.min(1, t.timer / (t.duration || 0.45)));
     const mul = telegraphMultiplier(state.settings);
     const ringR = state.enemy.r + 4 + (1 - a) * 18 * mul;
     R.ring(state.enemy.x, state.enemy.y, ringR, pal.ring, 2, Math.min(1, a * 0.85 * mul));
-    // Label above enemy with fade
-    const tx = Math.max(8, Math.min(R.W - 120, state.enemy.x - 22));
-    const ty = Math.max(20, state.enemy.y - 18);
+    const tx = state.enemy.x - 22;
+    const ty = state.enemy.y - 18;
     const bg = `rgba(0,0,0,${0.45 * a + 0.15})`;
-    // Slightly dim text as it fades
     R.textWithBg(t.text, tx, ty, t.color, bg);
   }
+  R.endWorld();
   const r0 = state.enemy.rules[0];
   const r1 = state.enemy.rules[1];
   R.text('Score: ' + (state.score|0), 12, 16);

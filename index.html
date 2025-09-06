@@ -6,8 +6,8 @@
   <title>AI Dungeon Master (Browser)</title>
   <style>
     html, body { margin:0; height:100%; background:#0e0e13; color:#eaeaea; font-family: system-ui, sans-serif; }
-    #hud { position:fixed; top:8px; left:8px; padding:6px 10px; background:rgba(0,0,0,0.4); border-radius:8px; }
-    canvas { display:block; margin:0 auto; image-rendering: pixelated; }
+    #hud { position:fixed; top:8px; left:8px; padding:6px 10px; background:rgba(0,0,0,0.4); border-radius:8px; z-index: 2; }
+    canvas { position:fixed; inset:0; width:100%; height:100%; display:block; image-rendering: pixelated; }
     a { color:#9ad; }
   </style>
 </head>
