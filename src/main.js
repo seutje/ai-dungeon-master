@@ -17,7 +17,7 @@ import { createCodex, recordAdaptation, renderCodex } from './ui/codex.js';
 import { createSettings, saveSettings, telegraphMultiplier, palette, keymap } from './ui/settings.js';
 import { mulberry32, weekSeed } from './engine/rng.js';
 import { loadModRules, getRulesOverride } from './data/mod.js';
-import { saveBestPerformer } from './data/persistence.js';
+import { saveBestPerformer, clearBestPerformers } from './data/persistence.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
@@ -62,7 +62,8 @@ let state = {
   firing: false,
   mouse: { x: R.W * 0.5, y: R.H * 0.5 },
   camera: { x: 0, y: 0 },
-  fps: 0
+  fps: 0,
+  ui: { resetBtn: { x: 0, y: 0, w: 0, h: 0 }, resetMsgTimer: 0 }
 };
 
 initPool();
@@ -73,11 +74,24 @@ canvas.addEventListener('pointermove', (e) => {
   state.mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width);
   state.mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
 });
-canvas.addEventListener('pointerdown', () => { state.firing = true; });
+canvas.addEventListener('pointerdown', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+  // Check UI button hit first (screen-space)
+  const b = state.ui && state.ui.resetBtn;
+  if (b && mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+    try { clearBestPerformers(); state.ui.resetMsgTimer = 1.6; } catch (_) {}
+    return; // don't start firing when clicking UI
+  }
+  state.firing = true;
+});
 window.addEventListener('pointerup',   () => { state.firing = false; });
 
 function fixed(dt) {
   if (state.betweenRooms || state.gameOver) return;
+  // UI timers
+  if (state.ui && state.ui.resetMsgTimer > 0) state.ui.resetMsgTimer = Math.max(0, state.ui.resetMsgTimer - dt);
   // Rising-edge toggles for settings
   risingToggle('KeyB', () => { state.settings.colorMode = (state.settings.colorMode === 'default' ? 'cb' : 'default'); saveSettings(state.settings); });
   risingToggle('KeyT', () => { state.settings.telegraph = (state.settings.telegraph === 'low' ? 'medium' : state.settings.telegraph === 'medium' ? 'high' : 'low'); saveSettings(state.settings); });
@@ -307,6 +321,19 @@ function render(alpha) {
   R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, 18 + 18*2);
   R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 18 + 18*3);
   R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 18 + 18*4);
+
+  // UI: Reset Best button (center-top)
+  const btnW = 160, btnH = 28;
+  const btnX = Math.floor((R.W - btnW) / 2);
+  const btnY = 12;
+  state.ui.resetBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+  const hover = (state.mouse.x >= btnX && state.mouse.x <= btnX+btnW && state.mouse.y >= btnY && state.mouse.y <= btnY+btnH);
+  const fill = hover ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.10)';
+  R.rect(btnX, btnY, btnW, btnH, fill, '#666');
+  R.text('Reset Best', btnX + 14, btnY + 20, '#eaeaea');
+  if (state.ui.resetMsgTimer > 0) {
+    R.textWithBg('Cleared best performers', btnX - 8, btnY + btnH + 20, '#aef', 'rgba(0,0,0,0.5)');
+  }
   if (state.enemy.archetype === 'Boss') {
     R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
   }
