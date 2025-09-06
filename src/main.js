@@ -38,13 +38,14 @@ let state = {
   codex: createCodex(),
   settings: createSettings(),
   toggles: Object.create(null),
-  betweenRooms: false
+  betweenRooms: false,
+  gameOver: false
 };
 
 initPool();
 
 function fixed(dt) {
-  if (state.betweenRooms) return;
+  if (state.betweenRooms || state.gameOver) return;
   // Rising-edge toggles for settings
   risingToggle('KeyB', () => { state.settings.colorMode = (state.settings.colorMode === 'default' ? 'cb' : 'default'); saveSettings(state.settings); });
   risingToggle('KeyT', () => { state.settings.telegraph = (state.settings.telegraph === 'low' ? 'medium' : state.settings.telegraph === 'medium' ? 'high' : 'low'); saveSettings(state.settings); });
@@ -81,6 +82,21 @@ function fixed(dt) {
   // Room hazards update and player-hazard damage
   stepRoom(state.room, dt);
   applyHazardDamage(state.room, state.player, dt);
+  applyHazardDamageToEnemy(state.room, state.enemy, dt);
+
+  // Check lose condition
+  if (state.player.hp <= 0) {
+    state.player.hp = 0;
+    state.gameOver = true;
+    return;
+  }
+
+  // Check win condition for the room (enemy dead)
+  if (state.enemy.hp <= 0) {
+    state.enemy.hp = 0;
+    endRoomAndAdapt();
+    return;
+  }
   const dur = state.room.duration || roomDuration(state.room.id);
   if (state.room.time >= dur) {
     endRoomAndAdapt();
@@ -223,7 +239,13 @@ function render(alpha) {
   if (state.enemy.archetype === 'Boss') {
     R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
   }
+  // Enemy HP on HUD (avoid overlap with Boss Phase line)
+  const enemyHpY = (state.enemy.archetype === 'Boss') ? 124 : 104;
+  R.text(`Enemy HP: ${Math.max(0, state.enemy.hp).toFixed(0)}`, 12, enemyHpY);
   if (state.betweenRooms) R.text('Adapting...', 420, 24);
+  if (state.gameOver) {
+    R.textWithBg('GAME OVER', R.W*0.5 - 60, R.H*0.5, '#fff', 'rgba(0,0,0,0.5)');
+  }
   // Codex panel
   renderCodex(state.codex, R);
 }
@@ -262,6 +284,26 @@ function distToSegment(px, py, x1, y1, x2, y2) {
   const b = c1 / c2;
   const bx = x1 + b*vx, by = y1 + b*vy;
   return Math.hypot(px - bx, py - by);
+}
+
+// Apply hazard damage to enemies as well (environment hurts both sides)
+function applyHazardDamageToEnemy(room, enemy, dt) {
+  for (const h of room.hazards) {
+    if (h.type === 'spike' && h.active) {
+      const dx = enemy.x - h.x, dy = enemy.y - h.y;
+      if (dx*dx + dy*dy <= Math.pow((enemy.r || 12) + (h.r || 0), 2)) {
+        enemy.hp = Math.max(0, enemy.hp - 25*dt);
+      }
+    } else if (h.type === 'beam') {
+      const x1 = h.cx, y1 = h.cy;
+      const x2 = h.cx + Math.cos(h.angle) * h.len;
+      const y2 = h.cy + Math.sin(h.angle) * h.len;
+      const d = distToSegment(enemy.x, enemy.y, x1, y1, x2, y2);
+      if (d <= (h.width||8)/2 + (enemy.r || 12)) {
+        enemy.hp = Math.max(0, enemy.hp - 18*dt);
+      }
+    }
+  }
 }
 
 start({ fixed, render });
