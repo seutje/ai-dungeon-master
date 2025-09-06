@@ -1,6 +1,7 @@
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   let W = canvas.width, H = canvas.height;
+  let fontPx = 18;
   function clear() {
     ctx.fillStyle = '#0e0e13';
     ctx.fillRect(0, 0, W, H);
@@ -11,14 +12,14 @@ export function createRenderer(canvas) {
     if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
   }
   function text(s, x, y, color = '#eaeaea') {
-    ctx.fillStyle = color; ctx.font = '14px system-ui, sans-serif'; ctx.fillText(s, x, y);
+    ctx.fillStyle = color; ctx.font = fontPx + 'px system-ui, sans-serif'; ctx.fillText(s, x, y);
   }
   function textWithBg(s, x, y, color = '#eaeaea', bg = 'rgba(0,0,0,0.55)') {
     ctx.save();
-    ctx.font = '14px system-ui, sans-serif';
+    ctx.font = fontPx + 'px system-ui, sans-serif';
     const padX = 6, padY = 3;
     const w = Math.ceil(ctx.measureText(s).width);
-    const h = 16; // approx line height
+    const h = Math.ceil(fontPx * 1.1); // approx line height
     ctx.fillStyle = bg;
     ctx.fillRect(Math.floor(x - padX), Math.floor(y - h + padY), w + padX*2, h + padY*2);
     ctx.fillStyle = color;
@@ -46,9 +47,10 @@ export function createRenderer(canvas) {
     W = canvas.width;
     H = canvas.height;
   }
+  function setTextSize(px) { fontPx = Math.max(10, Math.min(48, px|0)); }
   function rect(x, y, w, h, fill, stroke) {
     if (fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); }
     if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h); }
   }
-  return { clear, circle, text, textWithBg, ring, rect, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
+  return { clear, circle, text, textWithBg, ring, rect, setTextSize, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
 }

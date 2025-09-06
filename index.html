@@ -6,13 +6,11 @@
   <title>AI Dungeon Master (Browser)</title>
   <style>
     html, body { margin:0; height:100%; background:#0e0e13; color:#eaeaea; font-family: system-ui, sans-serif; }
-    #hud { position:fixed; top:8px; left:8px; padding:6px 10px; background:rgba(0,0,0,0.4); border-radius:8px; z-index: 2; }
     canvas { position:fixed; inset:0; width:100%; height:100%; display:block; image-rendering: pixelated; }
     a { color:#9ad; }
   </style>
 </head>
 <body>
-  <div id="hud">AI Dungeon Master • <span id="fps">--</span> FPS • Room: <span id="room">1</span></div>
   <canvas id="game" width="960" height="540"></canvas>
   <script type="module" src="/src/main.js"></script>
   <script>

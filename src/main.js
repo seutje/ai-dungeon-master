@@ -20,6 +20,7 @@ import { loadModRules, getRulesOverride } from './data/mod.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
+R.setTextSize(18);
 function resizeCanvasToWindow() {
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
   const w = Math.floor(window.innerWidth * dpr);
@@ -59,7 +60,8 @@ let state = {
   score: 0,
   firing: false,
   mouse: { x: R.W * 0.5, y: R.H * 0.5 },
-  camera: { x: 0, y: 0 }
+  camera: { x: 0, y: 0 },
+  fps: 0
 };
 
 initPool();
@@ -184,7 +186,6 @@ async function endRoomAndAdapt() {
   if (state.adaptHistory.length > 2) state.adaptHistory.shift();
   // next room (world-sized, independent of viewport)
   state.room = createRoom(state.room.id + 1, WORLD_W, WORLD_H);
-  document.getElementById('room').textContent = String(state.room.id);
   // rotate archetype to showcase variety
   const isBoss = (state.room.id % 4 === 0);
   const types = isBoss ? ['boss'] : ['grunt', 'ranged', 'support'];
@@ -287,10 +288,11 @@ function render(alpha) {
   R.endWorld();
   const r0 = state.enemy.rules[0];
   const r1 = state.enemy.rules[1];
-  R.text('Score: ' + (state.score|0), 12, 16);
-  R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, 28);
-  R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 46);
-  R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 64);
+  R.text('Score: ' + (state.score|0), 12, 18);
+  R.text('Room: ' + state.room.id + '  FPS: ' + (state.fps||0), 12, 18 + 18);
+  R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, 18 + 18*2);
+  R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 18 + 18*3);
+  R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 18 + 18*4);
   if (state.enemy.archetype === 'Boss') {
     R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
   }
@@ -372,7 +374,7 @@ function applyContactDamage(player, enemy, dt) {
   }
 }
 
-start({ fixed, render });
+start({ fixed, render, onFps: (v)=>{ state.fps = v; } });
 
 // Helper: draw simple health bar in world-space
 function drawHealthBar(R, cx, cy, w, h, hp, maxHp) {
