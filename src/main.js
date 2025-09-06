@@ -7,6 +7,7 @@ import { createRoom, stepRoom } from './game/rooms.js';
 import { captureSnapshot } from './adaptation/snapshot.js';
 import { mutatePopulation } from './adaptation/mutate.js';
 import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
+import { CONFIG } from './config.js';
 import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
 import { createRecorder, keysToBits } from './engine/input_recorder.js';
 
@@ -53,7 +54,9 @@ async function endRoomAndAdapt() {
   state.betweenRooms = true;
   const snap = captureSnapshot(state);
   const baseRules = { rules: state.enemy.rules.map(r => ({...r})) };
-  const population = mutatePopulation(baseRules, 24);
+  const isBoss = state.enemy.archetype === 'Boss';
+  const simCount = isBoss ? (CONFIG.SIM_COUNT_BOSS||96) : (CONFIG.SIM_COUNT_NORMAL||32);
+  const population = mutatePopulation(baseRules, simCount);
   console.log('[Adapt] Simulating', population.length, 'variants...');
   const { winner, ranked } = await evaluateVariants(snap, baseRules, population);
   console.log('[Adapt] Best fitness:', ranked[0].fitness.toFixed(3), '→ applying winner');

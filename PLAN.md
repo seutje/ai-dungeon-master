@@ -101,9 +101,9 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 12 — Telemetry & Fitness Expansion
-- [ ] Extend telemetry collection: DPS, control time, jitter, fairness checks.
-- [ ] Improve fitness function to multi-objective scalar with weights.
-- [ ] Add designer knobs (`config.json`) for tuning mutation rate, fitness weights, rule budgets.
+- [x] Extend telemetry collection: DPS, control time, jitter, fairness checks.
+- [x] Improve fitness function to multi-objective scalar with weights.
+- [x] Add designer knobs (`config.json`) for tuning mutation rate, fitness weights, rule budgets.
 
 ---
 
