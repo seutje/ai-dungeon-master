@@ -56,9 +56,9 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 6 — Action System Expansion
-- [ ] Create `actions.js` with reusable atoms: `Move`, `Strafe`, `Charge`, `BurstFire`, `Feint`.
-- [ ] Extend `ai_runtime.js` to evaluate conditions and actions more formally.
-- [ ] Add cooldowns and blacklists to rules.
+- [x] Create `actions.js` with reusable atoms: `Move`, `Strafe`, `Charge`, `BurstFire`, `Feint`.
+- [x] Extend `ai_runtime.js` to evaluate conditions and actions more formally.
+- [x] Add cooldowns and blacklists to rules.
 - [ ] Implement simple telegraphs (color flash, text indicators).
 
 ---

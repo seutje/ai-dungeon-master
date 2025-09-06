@@ -1,10 +1,41 @@
-// Placeholder rule evaluator (expand later)
+// Rule-based evaluator with cooldowns and simple blacklist tags.
+// Chooses the best rule, sets cooldown, and stores selection in memory.
 export function tickAI(enemy, ctx, dt) {
-  // Score simple two-rule set to demonstrate "weights" being adapted.
+  // Tick down cooldowns
+  for (const r of enemy.rules) {
+    if (r.cooldown && r.cooldown > 0) r.cooldown = Math.max(0, r.cooldown - dt);
+  }
+
   const d = Math.hypot(ctx.player.x - enemy.x, ctx.player.y - enemy.y);
-  // pretend 'Approach' gets priority when far; 'Strafe' when close
-  const approachScore = enemy.rules[0].weights * (d > 120 ? 1 : 0.5);
-  const strafeScore = enemy.rules[1].weights * (d <= 160 ? 1 : 0.3);
-  enemy.memory.lastChoose = (approachScore >= strafeScore) ? 0 : 1;
-  // real action execution happens in enemies.stepEnemy for demo
+
+  let bestIdx = 0;
+  let bestScore = -Infinity;
+  for (let i = 0; i < enemy.rules.length; i++) {
+    const r = enemy.rules[i];
+    // Cooldown gate
+    if ((r.cooldown || 0) > 0) continue;
+    // Blacklist tags (optional)
+    if (isBlacklisted(r, d)) continue;
+
+    let score = r.weights || 0.5;
+    // Preference shaping by distance based on rule name
+    if (r.name === 'Approach') score *= (d > 120 ? 1.0 : 0.5);
+    else if (r.name === 'Strafe') score *= (d <= 160 ? 1.0 : 0.3);
+
+    if (score > bestScore) { bestScore = score; bestIdx = i; }
+  }
+
+  enemy.memory.lastChoose = bestIdx;
+  // Apply cooldown for the chosen rule
+  const chosen = enemy.rules[bestIdx];
+  chosen.cooldown = (chosen.cdMs ? chosen.cdMs : 250) / 1000;
+}
+
+function isBlacklisted(rule, distance) {
+  const tags = rule.blacklistTags || rule.blacklist || [];
+  for (const t of tags) {
+    if (t === 'NoClose' && distance < 100) return true;
+    if (t === 'NoFar' && distance > 200) return true;
+  }
+  return false;
 }
