@@ -124,9 +124,9 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 15 — Accessibility
-- [ ] Add adjustable telegraph intensity.
-- [ ] Add colorblind-safe palette modes.
-- [ ] Add aim assist and input remapping.
+- [x] Add adjustable telegraph intensity.
+- [x] Add colorblind-safe palette modes.
+- [x] Add input remapping; aim assist TBD.
 
 ---
 

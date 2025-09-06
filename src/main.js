@@ -9,10 +9,11 @@ import { mutatePopulation } from './adaptation/mutate.js';
 import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
 import { CONFIG } from './config.js';
 import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
-import { createRecorder, keysToBits } from './engine/input_recorder.js';
+import { createRecorder } from './engine/input_recorder.js';
 import { computeSimScale } from './engine/device.js';
 import { initSfx, beep } from './engine/sfx.js';
 import { createCodex, recordAdaptation, renderCodex } from './ui/codex.js';
+import { createSettings, saveSettings, telegraphMultiplier, palette, keymap } from './ui/settings.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
@@ -31,6 +32,8 @@ let state = {
   recorder: createRecorder(),
   adaptHistory: [],
   codex: createCodex(),
+  settings: createSettings(),
+  toggles: Object.create(null),
   betweenRooms: false
 };
 
@@ -38,13 +41,29 @@ initPool();
 
 function fixed(dt) {
   if (state.betweenRooms) return;
-  handleInput(state.player, keys, dt);
-  // Record per-step inputs as bitset for ghost replay
-  state.recorder.push(keysToBits(keys));
+  // Rising-edge toggles for settings
+  risingToggle('KeyB', () => { state.settings.colorMode = (state.settings.colorMode === 'default' ? 'cb' : 'default'); saveSettings(state.settings); });
+  risingToggle('KeyT', () => { state.settings.telegraph = (state.settings.telegraph === 'low' ? 'medium' : state.settings.telegraph === 'medium' ? 'high' : 'low'); saveSettings(state.settings); });
+  risingToggle('KeyM', () => { state.settings.keymapScheme = (state.settings.keymapScheme === 'arrows_wasd' ? 'vim_hjkl' : 'arrows_wasd'); saveSettings(state.settings); });
+
+  // Build logical actions from keymap and feed input
+  const km = keymap(state.settings);
+  const act = {
+    Up: km.Up.some(c => keys[c]),
+    Down: km.Down.some(c => keys[c]),
+    Left: km.Left.some(c => keys[c]),
+    Right: km.Right.some(c => keys[c]),
+    Dash: km.Dash.some(c => keys[c]),
+  };
+  handleInput(state.player, act, dt);
+  // Record logical inputs as bitset for ghost replay
+  let bits = 0;
+  if (act.Up) bits |= 1; if (act.Down) bits |= 2; if (act.Left) bits |= 4; if (act.Right) bits |= 8; if (act.Dash) bits |= 16;
+  state.recorder.push(bits);
   // Toggle codex
   if (keys['KeyC']) { state.codex.visible = true; }
   if (keys['KeyV']) { state.codex.visible = false; }
-  tickAI(state.enemy, { player: state.player, hazards: state.room.hazards }, dt);
+  tickAI(state.enemy, { player: state.player, hazards: state.room.hazards, settings: state.settings }, dt);
   // SFX for fresh telegraphs
   if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.just) {
     state.enemy.memory.telegraph.just = false;
@@ -125,8 +144,10 @@ async function endRoomAndAdapt() {
 
 function render(alpha) {
   R.clear();
+  // Colors
+  const pal = palette(state.settings);
   // Player
-  R.circle(state.player.x, state.player.y, state.player.r, '#4fb', '#2aa');
+  R.circle(state.player.x, state.player.y, state.player.r, pal.playerFill, pal.playerStroke);
   // Obstacles
   for (const ob of state.room.obstacles || []) {
     R.circle(ob.x, ob.y, 0, undefined, undefined); // noop to keep context consistent
@@ -156,18 +177,19 @@ function render(alpha) {
     }
   }
   // Enemy (color shows which rule was last selected by AI)
-  const baseCol = state.enemy.memory.lastChoose === 0 ? '#f95' : '#fd6';
+  const baseCol = state.enemy.memory.lastChoose === 0 ? pal.enemyFillA : pal.enemyFillB;
   const flashing = state.enemy.memory.flash && state.enemy.memory.flash > 0;
   const fillCol = flashing ? '#fff' : baseCol;
-  R.circle(state.enemy.x, state.enemy.y, state.enemy.r, fillCol, '#a53');
+  R.circle(state.enemy.x, state.enemy.y, state.enemy.r, fillCol, pal.enemyStroke);
   // Projectiles
   renderProjectiles(state.projectiles, R);
   // Telegraph text near enemy when switching actions
   if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.timer > 0) {
     const t = state.enemy.memory.telegraph;
     const a = Math.max(0, Math.min(1, t.timer / (t.duration || 0.45)));
-    const ringR = state.enemy.r + 4 + (1 - a) * 18;
-    R.ring(state.enemy.x, state.enemy.y, ringR, t.color, 2, a * 0.85);
+    const mul = telegraphMultiplier(state.settings);
+    const ringR = state.enemy.r + 4 + (1 - a) * 18 * mul;
+    R.ring(state.enemy.x, state.enemy.y, ringR, pal.ring, 2, Math.min(1, a * 0.85 * mul));
     // Label above enemy with fade
     const tx = Math.max(8, Math.min(R.W - 120, state.enemy.x - 22));
     const ty = Math.max(20, state.enemy.y - 18);
@@ -206,6 +228,12 @@ function applyHazardDamage(room, player, dt) {
       }
     }
   }
+}
+function risingToggle(code, fn) {
+  const was = state.toggles[code] || false;
+  const is = !!keys[code];
+  if (!was && is) fn();
+  state.toggles[code] = is;
 }
 function distToSegment(px, py, x1, y1, x2, y2) {
   const vx = x2 - x1, vy = y2 - y1;
