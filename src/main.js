@@ -39,10 +39,22 @@ let state = {
   settings: createSettings(),
   toggles: Object.create(null),
   betweenRooms: false,
-  gameOver: false
+  gameOver: false,
+  score: 0,
+  firing: false,
+  mouse: { x: R.W * 0.5, y: R.H * 0.5 }
 };
 
 initPool();
+
+// Pointer input for aiming/shooting
+canvas.addEventListener('pointermove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  state.mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  state.mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+});
+canvas.addEventListener('pointerdown', () => { state.firing = true; });
+window.addEventListener('pointerup',   () => { state.firing = false; });
 
 function fixed(dt) {
   if (state.betweenRooms || state.gameOver) return;
@@ -76,9 +88,25 @@ function fixed(dt) {
   }
   stepPlayer(state.player, dt, R.W, R.H);
   stepEnemy(state.enemy, state.player, dt, (spec) => {
-    spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, '#9ad');
+    spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, '#9ad', 'enemy');
   });
-  stepProjectiles(state.projectiles, dt, R.W, R.H, state.player);
+  // Player shooting (hold to fire toward mouse)
+  if (state.firing && state.player.shootCd <= 0) {
+    const dx = state.mouse.x - state.player.x;
+    const dy = state.mouse.y - state.player.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const speed = 520;
+    const vx = (dx/len) * speed;
+    const vy = (dy/len) * speed;
+    spawnBullet(state.projectiles, state.player.x, state.player.y, vx, vy, 12, 1.2, 3, '#fd7', 'player');
+    state.player.shootCd = 0.18;
+  }
+  stepProjectiles(
+    state.projectiles, dt, R.W, R.H,
+    state.player, state.enemy,
+    (dmg)=>{ state.score += Math.round(dmg * 0.5); },
+    ()=>{ state.score += 100; }
+  );
   // Room hazards update and player-hazard damage
   stepRoom(state.room, dt);
   applyHazardDamage(state.room, state.player, dt);
@@ -232,6 +260,7 @@ function render(alpha) {
   }
   const r0 = state.enemy.rules[0];
   const r1 = state.enemy.rules[1];
+  R.text('Score: ' + (state.score|0), 12, 16);
   R.text('Archetype: ' + (state.enemy.archetype || 'Grunt'), 12, 28);
   R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 46);
   R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 64);
@@ -255,7 +284,7 @@ function applyHazardDamage(room, player, dt) {
     if (h.type === 'spike' && h.active) {
       const dx = player.x - h.x, dy = player.y - h.y;
       if (dx*dx + dy*dy <= Math.pow(player.r + h.r, 2)) {
-        player.hp = Math.max(0, player.hp - 25*dt);
+        if (!player.invuln || player.invuln <= 0) player.hp = Math.max(0, player.hp - 25*dt);
       }
     } else if (h.type === 'beam') {
       const x1 = h.cx, y1 = h.cy;
@@ -263,7 +292,7 @@ function applyHazardDamage(room, player, dt) {
       const y2 = h.cy + Math.sin(h.angle) * h.len;
       const d = distToSegment(player.x, player.y, x1, y1, x2, y2);
       if (d <= (h.width||8)/2 + player.r) {
-        player.hp = Math.max(0, player.hp - 18*dt);
+        if (!player.invuln || player.invuln <= 0) player.hp = Math.max(0, player.hp - 18*dt);
       }
     }
   }
