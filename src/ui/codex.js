@@ -22,8 +22,22 @@ export function recordAdaptation(codex, roomId, archetype, prevRules, newRules) 
 export function renderCodex(codex, R) {
   if (!codex.visible) return;
   const lh = R.lineHeightPx();
-  const x = R.W - 260, y = 16;
+  const y = 16;
   const title = 'Codex — Recent Adaptations';
+  // Compute right-aligned x so widest line fits on screen
+  let maxW = R.textWidth(title);
+  for (const e of codex.entries) {
+    const header = `Room ${e.roomId} • ${e.archetype}`;
+    if (R.textWidth(header) > maxW) maxW = R.textWidth(header);
+    for (const c of e.changes) {
+      const dir = c.d > 0 ? '+' : (c.d < 0 ? '−' : '·');
+      const line = `${c.name}: ${dir}${Math.abs(c.d).toFixed(2)} → ${c.after.toFixed(2)}`;
+      const w = R.textWidth(line) + 8; // indent margin
+      if (w > maxW) maxW = w;
+    }
+  }
+  const margin = 16;
+  const x = Math.max(margin, R.W - maxW - margin);
   R.textWithBg(title, x, y + Math.round(lh), '#cde', 'rgba(0,0,0,0.35)');
   let yy = y + Math.round(lh * 2);
   for (const e of codex.entries) {

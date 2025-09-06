@@ -17,6 +17,10 @@ export function createRenderer(canvas) {
   function text(s, x, y, color = '#eaeaea') {
     ctx.fillStyle = color; ctx.font = fontPx + 'px system-ui, sans-serif'; ctx.fillText(s, x, y);
   }
+  function textWidth(s) {
+    ctx.font = fontPx + 'px system-ui, sans-serif';
+    return Math.ceil(ctx.measureText(String(s)).width);
+  }
   function textWithBg(s, x, y, color = '#eaeaea', bg = 'rgba(0,0,0,0.55)') {
     ctx.save();
     ctx.font = fontPx + 'px system-ui, sans-serif';
@@ -57,5 +61,5 @@ export function createRenderer(canvas) {
     if (fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); }
     if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h); }
   }
-  return { clear, circle, text, textWithBg, ring, rect, setTextSize, setLineHeight, lineHeightPx, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
+  return { clear, circle, text, textWithBg, textWidth, ring, rect, setTextSize, setLineHeight, lineHeightPx, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
 }

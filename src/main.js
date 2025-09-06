@@ -7,7 +7,7 @@ import { createRoom, stepRoom, roomDuration } from './game/rooms.js';
 import { captureSnapshot } from './adaptation/snapshot.js';
 import { mutatePopulation } from './adaptation/mutate.js';
 import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
-import { CONFIG } from './config.js';
+import { CONFIG, loadConfig } from './config.js';
 import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
 import { createRecorder } from './engine/input_recorder.js';
 import { computeSimScale } from './engine/device.js';
@@ -41,6 +41,13 @@ window.addEventListener('keyup',   e => keys[e.code]=false);
 initSfx();
 // Fire-and-forget load of optional rule overrides
 loadModRules();
+// Load config overrides (sim counts, weights, etc.)
+// Fire-and-forget; values are read later during adaptation.
+try { loadConfig(); } catch (_) {}
+
+// Query flag to enable mod rule overrides (off by default)
+const _params = new URLSearchParams(window.location.search);
+const MODS_ENABLED = _params.has('mods') || _params.get('mod') === '1';
 
 // World size independent from viewport
 const WORLD_W = 2000;
@@ -70,6 +77,8 @@ let state = {
   gameOver: false,
   started: false,
   score: 0,
+  // Persist learned rules per archetype across rooms
+  learned: Object.create(null),
   firing: false,
   mouse: { x: R.W * 0.5, y: R.H * 0.5 },
   camera: { x: 0, y: 0 },
@@ -208,12 +217,13 @@ async function endRoomAndAdapt() {
   const fairMax = CONFIG.FAIRNESS_MAX ?? 0.02;
   const chosenRes = ranked.find(r => (r.fairness || 0) <= fairMax) || ranked[0];
   const chosenVariant = chosenRes.rules; // { rules: [...] }
+  const prevArch = state.enemy.archetype || 'Enemy';
   // Persist best performer (top fitness) for this room to localStorage
   try {
     const best = ranked[0];
     saveBestPerformer(state.room.id, {
       roomId: state.room.id,
-      archetype: state.enemy.archetype || 'Enemy',
+      archetype: prevArch,
       fitness: Number(best.fitness || 0),
       fairness: Number(best.fairness || 0),
       rules: best.rules && best.rules.rules ? best.rules.rules : (best.rules || []),
@@ -227,6 +237,10 @@ async function endRoomAndAdapt() {
   // Clamp rule weights to safe max
   const wmax = CONFIG.RULE_WEIGHT_MAX || 1.6;
   for (const r of state.enemy.rules) { if (r.weights > wmax) r.weights = wmax; if (r.weights < 0.05) r.weights = 0.05; }
+  // Record codex entry for this archetype's adapted rules (before swapping enemy)
+  recordAdaptation(state.codex, state.room.id, prevArch, prevRules, state.enemy.rules);
+  // Persist learned rules by archetype so future spawns continue evolving
+  state.learned[prevArch] = state.enemy.rules.map(r => ({...r}));
   // store recent winners for boss seeding (keep last two)
   state.adaptHistory.push(chosenVariant);
   if (state.adaptHistory.length > 2) state.adaptHistory.shift();
@@ -243,9 +257,19 @@ async function endRoomAndAdapt() {
   state.player.vx = 0; state.player.vy = 0; state.player.dashTime = 0; state.player.dashCd = 0; state.player.invuln = 0;
   state.enemy = createEnemy(t, spawn.enemy.x, spawn.enemy.y);
   // Apply mod override if present for this archetype
-  const ov = getRulesOverride(state.enemy.archetype || t);
-  if (ov && Array.isArray(ov.rules)) {
-    state.enemy.rules = ov.rules.map(r => ({...r}));
+  if (MODS_ENABLED) {
+    const ov = getRulesOverride(state.enemy.archetype || t);
+    if (ov && Array.isArray(ov.rules)) {
+      state.enemy.rules = ov.rules.map(r => ({...r}));
+    }
+  }
+  // Apply learned rules for this archetype if available (takes precedence over defaults/mods)
+  const learned = state.learned[state.enemy.archetype || t];
+  if (learned && Array.isArray(learned)) {
+    state.enemy.rules = learned.map(r => ({...r}));
+    // Clamp on load
+    const wmax2 = CONFIG.RULE_WEIGHT_MAX || 1.6;
+    for (const r of state.enemy.rules) { if (r.weights > wmax2) r.weights = wmax2; if (r.weights < 0.05) r.weights = 0.05; }
   }
   // set room duration based on id
   state.room.duration = roomDuration(state.room.id);
@@ -275,8 +299,6 @@ async function endRoomAndAdapt() {
   state.projectiles.list.length = 0;
   // reset input recorder for new room
   state.recorder.clear();
-  // record codex entry for previous room
-  recordAdaptation(state.codex, state.room.id - 1, prev.archetype || 'Enemy', prevRules, state.enemy.rules);
   state.betweenRooms = false;
 }
 
@@ -472,15 +494,22 @@ function drawHealthBar(R, cx, cy, w, h, hp, maxHp) {
 }
 
 function drawResetButton(R) {
-  // UI: Reset Best button (center-top)
-  const btnW = 160, btnH = 28;
+  // UI: Reset Best button (center-top), size based on text metrics
+  const label = 'Reset Best';
+  const lh = R.lineHeightPx();
+  const padX = 14, padY = 8;
+  const textW = (typeof R.textWidth === 'function') ? R.textWidth(label) : 140;
+  const btnW = Math.max(160, textW + padX * 2);
+  const btnH = Math.max( Math.ceil(lh) + padY, 32 );
   const btnX = Math.floor((R.W - btnW) / 2);
   const btnY = 12;
   state.ui.resetBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
   const hover = (state.mouse.x >= btnX && state.mouse.x <= btnX+btnW && state.mouse.y >= btnY && state.mouse.y <= btnY+btnH);
   const fill = hover ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.10)';
   R.rect(btnX, btnY, btnW, btnH, fill, '#666');
-  R.text('Reset Best', btnX + 14, btnY + 20, '#eaeaea');
+  // Align baseline to vertically center text within the button
+  const textY = btnY + Math.floor((btnH + lh) / 2) - Math.floor(lh * 0.25);
+  R.text(label, btnX + padX, textY, '#eaeaea');
   if (state.ui.resetMsgTimer > 0) {
     R.textWithBg('Cleared best performers', btnX - 8, btnY + btnH + 20, '#aef', 'rgba(0,0,0,0.5)');
   }
