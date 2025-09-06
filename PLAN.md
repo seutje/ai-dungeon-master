@@ -109,8 +109,8 @@ It is designed for AI agents or developers to track programming progress.
 
 ## Phase 13 — Performance & Scaling
 - [ ] Profile main loop performance (Chrome DevTools).
-- [ ] Optimize object pooling, typed arrays for hot paths.
-- [ ] Scale down replay count automatically on weak devices.
+- [x] Optimize object pooling for projectiles.
+- [x] Scale down replay count automatically on weak devices.
 - [ ] Implement determinism regression tests.
 
 ---

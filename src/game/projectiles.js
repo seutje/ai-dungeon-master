@@ -1,9 +1,11 @@
 export function createProjectileSystem() {
-  return { list: [] };
+  return { list: [], pool: [] };
 }
 
 export function spawnBullet(sys, x, y, vx, vy, damage = 10, life = 2, radius = 3, color = '#9ad') {
-  sys.list.push({ x, y, vx, vy, r: radius, damage, life, color });
+  const p = (sys.pool.length ? sys.pool.pop() : {});
+  p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.r = radius; p.damage = damage; p.life = life; p.color = color;
+  sys.list.push(p);
 }
 
 export function stepProjectiles(sys, dt, boundsW, boundsH, player) {
@@ -13,14 +15,15 @@ export function stepProjectiles(sys, dt, boundsW, boundsH, player) {
     p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
     // Out of bounds or expired
     if (p.life <= 0 || p.x < -8 || p.x > boundsW + 8 || p.y < -8 || p.y > boundsH + 8) {
-      list.splice(i, 1); continue;
+      sys.pool.push(list.splice(i, 1)[0]);
+      continue;
     }
     // Player collision (circle-circle)
     const dx = player.x - p.x, dy = player.y - p.y;
     const rr = (player.r + p.r);
     if (dx*dx + dy*dy <= rr*rr) {
       player.hp = Math.max(0, player.hp - p.damage);
-      list.splice(i, 1);
+      sys.pool.push(list.splice(i, 1)[0]);
     }
   }
 }

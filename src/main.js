@@ -10,6 +10,7 @@ import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
 import { CONFIG } from './config.js';
 import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
 import { createRecorder, keysToBits } from './engine/input_recorder.js';
+import { computeSimScale } from './engine/device.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
@@ -55,7 +56,8 @@ async function endRoomAndAdapt() {
   const snap = captureSnapshot(state);
   const baseRules = { rules: state.enemy.rules.map(r => ({...r})) };
   const isCurrentBoss = state.enemy.archetype === 'Boss';
-  const simCount = isCurrentBoss ? (CONFIG.SIM_COUNT_BOSS||96) : (CONFIG.SIM_COUNT_NORMAL||32);
+  const baseSim = isCurrentBoss ? (CONFIG.SIM_COUNT_BOSS||96) : (CONFIG.SIM_COUNT_NORMAL||32);
+  const simCount = Math.max(8, Math.round(baseSim * computeSimScale()));
   const population = mutatePopulation(baseRules, simCount);
   console.log('[Adapt] Simulating', population.length, 'variants...');
   const { winner, ranked } = await evaluateVariants(snap, baseRules, population);
