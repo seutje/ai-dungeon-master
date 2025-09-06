@@ -238,7 +238,7 @@ export function stepSimulation(sim, dt, inputBits = 0) {
     if ((enemy.archetype||'')==='Boss'){
       const abilities = new Set(['Charge','AreaDeny','SpikeField','LaserSweep','Feint']);
       const allowed = (phase>=3)?'LaserSweep':(phase>=2)?'SpikeField':'Charge';
-      if (abilities.has(r.name) && r.name!==allowed) score *= 0.05;
+      if (abilities.has(r.name) && r.name!==allowed) continue;
     }
     if (score>bestScore){bestScore=score; bestIdx=i;}
   }

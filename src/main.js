@@ -410,7 +410,9 @@ function render(alpha) {
 
   drawResetButton(R);
   if (state.enemy.archetype === 'Boss') {
-    R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
+    // Place boss phase just below the top-left info block
+    const yBoss = Math.round(lh * 6);
+    R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, yBoss);
   }
   // Removed HUD HP text; health shown above entities
   if (state.betweenRooms) R.text('Adapting...', 420, 24);

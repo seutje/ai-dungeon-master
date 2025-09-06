@@ -65,8 +65,8 @@ export function tickAI(enemy, ctx, dt) {
       const abilities = new Set(['Charge','AreaDeny','SpikeField','LaserSweep','Feint']);
       const allowed = (phase >= 3) ? 'LaserSweep' : (phase >= 2) ? 'SpikeField' : 'Charge';
       if (abilities.has(r.name) && r.name !== allowed) {
-        // Severely down-rank other abilities for this phase; movement rules unaffected
-        score *= 0.05;
+        // Strict gating: skip disallowed abilities for this phase
+        continue;
       }
     }
 
