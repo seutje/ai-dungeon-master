@@ -1,5 +1,5 @@
-// Config facade to load JSON config with import assertion.
-// Falls back to defaults if import fails (older browsers).
+// Config facade to load JSON config without JSON modules (broad compatibility).
+// Loads defaults, then merges any values from src/config.json via fetch.
 let CONFIG = {
   SIM_COUNT_NORMAL: 32,
   SIM_COUNT_BOSS: 96,
@@ -10,11 +10,11 @@ let CONFIG = {
   EARLY_GAME_LEARNING_MULTIPLIER: 0.5,
 };
 try {
-  // eslint-disable-next-line import/no-unresolved
-  const mod = await import('./config.json', { assert: { type: 'json' } });
-  CONFIG = mod.default || CONFIG;
-} catch (_) {
-  // ignore; keep defaults
-}
+  const url = new URL('./config.json', import.meta.url);
+  const res = await fetch(url);
+  if (res.ok) {
+    const json = await res.json();
+    CONFIG = { ...CONFIG, ...json };
+  }
+} catch (_) { /* ignore; keep defaults */ }
 export { CONFIG };
-
