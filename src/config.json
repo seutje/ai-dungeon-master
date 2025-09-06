@@ -1,0 +1,15 @@
+{
+  "SIM_COUNT_NORMAL": 64,
+  "SIM_COUNT_BOSS": 192,
+  "MAX_RULES_PER_ARCHETYPE": 16,
+  "MUTATION_RATE": 0.25,
+  "FITNESS_WEIGHTS": {
+    "dps": 1.0,
+    "control": 0.6,
+    "economy": 0.3,
+    "jitter": -0.5,
+    "unfair": -2.0
+  },
+  "ADAPT_BUDGET_PER_ROOM": 3,
+  "EARLY_GAME_LEARNING_MULTIPLIER": 0.5
+}
