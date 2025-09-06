@@ -11,7 +11,7 @@ export function spawnBullet(sys, x, y, vx, vy, damage = 10, life = 2, radius = 3
 
 // Optionally pass enemy plus callbacks for scoring
 // onEnemyHit(damage), onEnemyKilled()
-export function stepProjectiles(sys, dt, boundsW, boundsH, player, enemy, onEnemyHit, onEnemyKilled) {
+export function stepProjectiles(sys, dt, boundsW, boundsH, player, enemy, onEnemyHit, onEnemyKilled, obstacles) {
   const list = sys.list;
   for (let i = list.length - 1; i >= 0; i--) {
     const p = list[i];
@@ -20,6 +20,13 @@ export function stepProjectiles(sys, dt, boundsW, boundsH, player, enemy, onEnem
     if (p.life <= 0 || p.x < -8 || p.x > boundsW + 8 || p.y < -8 || p.y > boundsH + 8) {
       sys.pool.push(list.splice(i, 1)[0]);
       continue;
+    }
+    // Obstacle collision (stop projectile)
+    if (Array.isArray(obstacles) && obstacles.length) {
+      if (hitsAnyObstacle(p, obstacles)) {
+        sys.pool.push(list.splice(i, 1)[0]);
+        continue;
+      }
     }
     if (p.owner === 'enemy') {
       // Player collision (circle-circle)
@@ -44,6 +51,18 @@ export function stepProjectiles(sys, dt, boundsW, boundsH, player, enemy, onEnem
       }
     }
   }
+}
+
+function hitsAnyObstacle(p, obstacles) {
+  const r = p.r || 2;
+  for (let i = 0; i < obstacles.length; i++) {
+    const ob = obstacles[i];
+    const cx = Math.max(ob.x, Math.min(p.x, ob.x + ob.w));
+    const cy = Math.max(ob.y, Math.min(p.y, ob.y + ob.h));
+    const dx = p.x - cx; const dy = p.y - cy;
+    if (dx*dx + dy*dy <= r*r) return true;
+  }
+  return false;
 }
 
 export function renderProjectiles(sys, R) {

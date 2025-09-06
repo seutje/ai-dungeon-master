@@ -11,6 +11,7 @@ import { CONFIG } from './config.js';
 import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
 import { createRecorder } from './engine/input_recorder.js';
 import { computeSimScale } from './engine/device.js';
+import { resolveCircleAabbs } from './engine/physics.js';
 import { initSfx, beep } from './engine/sfx.js';
 import { createCodex, recordAdaptation, renderCodex } from './ui/codex.js';
 import { createSettings, saveSettings, telegraphMultiplier, palette, keymap } from './ui/settings.js';
@@ -103,9 +104,13 @@ function fixed(dt) {
     beep( state.enemy.archetype === 'Boss' ? 660 : 880, 0.06, 0.02 );
   }
   stepPlayer(state.player, dt, state.room.W, state.room.H);
+  // Collide player against obstacles
+  resolveCircleAabbs(state.player, state.room.obstacles);
   stepEnemy(state.enemy, state.player, dt, (spec) => {
     spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, '#9ad', 'enemy');
   });
+  // Collide enemy against obstacles
+  resolveCircleAabbs(state.enemy, state.room.obstacles);
   // Player shooting (hold to fire toward mouse)
   if (state.firing && state.player.shootCd <= 0) {
     // Convert mouse screen coords to world by adding camera offset
@@ -124,7 +129,8 @@ function fixed(dt) {
     state.projectiles, dt, state.room.W, state.room.H,
     state.player, state.enemy,
     (dmg)=>{ state.score += Math.round(dmg * 0.5); },
-    ()=>{ state.score += 100; }
+    ()=>{ state.score += 100; },
+    state.room.obstacles
   );
   // Room hazards update and player-hazard damage
   stepRoom(state.room, dt);
@@ -237,9 +243,7 @@ function render(alpha) {
   R.circle(state.player.x, state.player.y, state.player.r, pal.playerFill, pal.playerStroke);
   // Obstacles
   for (const ob of state.room.obstacles || []) {
-    R.circle(ob.x, ob.y, 0, undefined, undefined);
-    const x = ob.x, y = ob.y, w = ob.w, h = ob.h;
-    R.textWithBg('', x, y + h, '#0000', 'rgba(255,255,255,0.06)');
+    R.rect(ob.x, ob.y, ob.w, ob.h, 'rgba(255,255,255,0.06)', '#555');
   }
   // Hazards
   for (const h of state.room.hazards || []) {

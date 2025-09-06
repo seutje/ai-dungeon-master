@@ -46,5 +46,9 @@ export function createRenderer(canvas) {
     W = canvas.width;
     H = canvas.height;
   }
-  return { clear, circle, text, textWithBg, ring, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
+  function rect(x, y, w, h, fill, stroke) {
+    if (fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h); }
+  }
+  return { clear, circle, text, textWithBg, ring, rect, beginWorld, endWorld, resize, get W(){ return W; }, get H(){ return H; } };
 }

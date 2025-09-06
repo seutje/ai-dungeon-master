@@ -18,10 +18,10 @@ export function createRoom(n, W, H) {
   }
   // Simple decorative obstacles
   const obstacles = [];
-  const obsCount = 1 + (n % 2);
+  const obsCount = 4 + (n % 4);
   for (let i = 0; i < obsCount; i++) {
-    const w = 80 + Math.floor(rng()*100);
-    const h = 16 + Math.floor(rng()*20);
+    const w = 120 + Math.floor(rng()*180);
+    const h = 24 + Math.floor(rng()*60);
     const x = 40 + Math.floor(rng()*(W - 80 - w));
     const y = 60 + Math.floor(rng()*(H - 120 - h));
     obstacles.push({ x, y, w, h });
