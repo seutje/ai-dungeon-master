@@ -80,9 +80,9 @@ It is designed for AI agents or developers to track programming progress.
 ---
 
 ## Phase 9 — Replay & Ghost System
-- [ ] Record player inputs with timestamps.
-- [ ] Implement ghost replay injection with small jitter.
-- [ ] Ensure determinism in replays (same seed + same inputs → same outcome).
+- [x] Record player inputs with timestamps (per-step bitset).
+- [x] Implement ghost replay injection with small jitter (deterministic SSE PRNG).
+- [x] Ensure determinism in replays (seeded jitter + fixed inputs).
 
 ---
 

@@ -8,6 +8,7 @@ import { captureSnapshot } from './adaptation/snapshot.js';
 import { mutatePopulation } from './adaptation/mutate.js';
 import { initPool, evaluateVariants } from './adaptation/worker_pool.js';
 import { createProjectileSystem, spawnBullet, stepProjectiles, renderProjectiles } from './game/projectiles.js';
+import { createRecorder, keysToBits } from './engine/input_recorder.js';
 
 const canvas = document.getElementById('game');
 const R = createRenderer(canvas);
@@ -22,6 +23,7 @@ let state = {
   player: createPlayer(R.W*0.25, R.H*0.5),
   enemy: createEnemy('grunt', R.W*0.75, R.H*0.5),
   projectiles: createProjectileSystem(),
+  recorder: createRecorder(),
   betweenRooms: false
 };
 
@@ -30,6 +32,8 @@ initPool();
 function fixed(dt) {
   if (state.betweenRooms) return;
   handleInput(state.player, keys, dt);
+  // Record per-step inputs as bitset for ghost replay
+  state.recorder.push(keysToBits(keys));
   tickAI(state.enemy, { player: state.player }, dt);
   stepPlayer(state.player, dt, R.W, R.H);
   stepEnemy(state.enemy, state.player, dt, (spec) => {
@@ -63,6 +67,8 @@ async function endRoomAndAdapt() {
   state.enemy = createEnemy(t, prev.x, prev.y);
   // clear projectiles between rooms
   state.projectiles.list.length = 0;
+  // reset input recorder for new room
+  state.recorder.clear();
   state.betweenRooms = false;
 }
 
