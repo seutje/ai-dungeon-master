@@ -48,6 +48,30 @@ export function tickAI(enemy, ctx, dt) {
       score *= (d < 160 ? 0.8 : 0.3);
     }
 
+    // Archetype-specific preference shaping to create distinct behaviors
+    const arch = enemy.archetype || 'Grunt';
+    if (arch === 'Grunt') {
+      if (r.name === 'Approach') score *= 1.2;
+      if (r.name === 'Charge') score *= 1.3;
+      if (r.name === 'KeepDistance') score *= 0.6;
+      if (r.name === 'Strafe') score *= 0.9;
+    } else if (arch === 'Ranged') {
+      if (r.name === 'Approach') score *= 0.4;
+      if (r.name === 'KeepDistance') score *= 1.35;
+      if (r.name === 'Strafe') score *= 1.15;
+      if (r.name === 'Charge') score *= 0.3;
+    } else if (arch === 'Support') {
+      if (r.name === 'Strafe') score *= 1.3;
+      if (r.name === 'Feint') score *= 1.2;
+      if (r.name === 'Approach') score *= 0.7;
+    } else if (arch === 'Boss') {
+      // keep boss flexible but mildly prefer area/charge in later phases
+      if ((enemy.memory?.phase||1) >= 2) {
+        if (r.name === 'AreaDeny') score *= 1.15;
+        if (r.name === 'Charge') score *= 1.1;
+      }
+    }
+
     if (score > bestScore) { bestScore = score; bestIdx = i; }
   }
 

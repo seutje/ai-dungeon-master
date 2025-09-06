@@ -110,7 +110,8 @@ function fixed(dt) {
   // Collide player against obstacles
   resolveCircleAabbs(state.player, state.room.obstacles);
   stepEnemy(state.enemy, state.player, dt, (spec) => {
-    spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, '#9ad', 'enemy');
+    const col = state.enemy.archetype === 'Ranged' ? '#fda' : (state.enemy.archetype === 'Boss' ? '#a6f' : '#9ad');
+    spawnBullet(state.projectiles, spec.x, spec.y, spec.vx, spec.vy, 10, 2.0, 3, col, 'enemy');
   });
   // Collide enemy against obstacles
   resolveCircleAabbs(state.enemy, state.room.obstacles);

@@ -9,7 +9,7 @@ export function createEnemy(type, x, y) {
   if (type === 'ranged') {
     return {
       ...base,
-      archetype: 'Ranged', speed: 135,
+      archetype: 'Ranged', speed: 130,
       rules: [
         { name:'KeepDistance', weights: 0.9, cooldown: 0, cdMs: 220 },
         { name:'Strafe',       weights: 0.6, cooldown: 0, cdMs: 320 }
@@ -18,10 +18,11 @@ export function createEnemy(type, x, y) {
   } else if (type === 'support') {
     return {
       ...base,
-      archetype: 'Support', speed: 120,
+      archetype: 'Support', speed: 110,
       rules: [
-        { name:'Strafe',   weights: 0.7, cooldown: 0, cdMs: 260 },
-        { name:'Approach', weights: 0.4, cooldown: 0, cdMs: 240 }
+        { name:'Strafe',   weights: 0.9, cooldown: 0, cdMs: 260 },
+        { name:'Feint',    weights: 0.6, cooldown: 0, cdMs: 700 },
+        { name:'Approach', weights: 0.3, cooldown: 0, cdMs: 260 }
       ]
     };
   } else if (type === 'boss') {
@@ -42,7 +43,7 @@ export function createEnemy(type, x, y) {
   // default grunt
   return {
     ...base,
-    archetype: 'Grunt', speed: 150,
+    archetype: 'Grunt', speed: 165,
     rules: [
       { name:'Approach', weights: 0.8, cooldown: 0, cdMs: 150, blacklistTags: ['NoClose'] },
       { name:'Charge',   weights: 0.3, cooldown: 0, cdMs: 900 }

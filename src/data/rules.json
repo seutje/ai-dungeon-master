@@ -14,8 +14,10 @@
   },
   "Support": {
     "rules": [
-      { "name": "Strafe",   "weights": 0.9, "cdMs": 260 },
-      { "name": "Approach", "weights": 0.5, "cdMs": 240 }
+      { "name": "Strafe",   "weights": 1.1, "cdMs": 260 },
+      { "name": "Feint",    "weights": 0.9, "cdMs": 700 },
+      { "name": "KeepDistance", "weights": 0.7, "cdMs": 260 },
+      { "name": "Approach", "weights": 0.2, "cdMs": 260 }
     ]
   },
   "Boss": {
