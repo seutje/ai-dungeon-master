@@ -67,6 +67,7 @@ let state = {
   toggles: Object.create(null),
   betweenRooms: false,
   gameOver: false,
+  started: false,
   score: 0,
   firing: false,
   mouse: { x: R.W * 0.5, y: R.H * 0.5 },
@@ -93,12 +94,19 @@ canvas.addEventListener('pointerdown', (e) => {
     try { clearBestPerformers(); state.ui.resetMsgTimer = 1.6; } catch (_) {}
     return; // don't start firing when clicking UI
   }
+  // Start game if on start screen
+  if (!state.started) { state.started = true; return; }
   state.firing = true;
 });
 window.addEventListener('pointerup',   () => { state.firing = false; });
+window.addEventListener('keydown', (e) => {
+  if (!state.started && (e.code === 'Enter' || e.code === 'Space')) {
+    state.started = true;
+  }
+});
 
 function fixed(dt) {
-  if (state.betweenRooms || state.gameOver) return;
+  if (!state.started || state.betweenRooms || state.gameOver) return;
   // UI timers
   if (state.ui && state.ui.resetMsgTimer > 0) state.ui.resetMsgTimer = Math.max(0, state.ui.resetMsgTimer - dt);
   // Rising-edge toggles for settings
@@ -275,6 +283,35 @@ function render(alpha) {
   R.clear();
   // Colors
   const pal = palette(state.settings);
+  // Start screen overlay
+  if (!state.started) {
+    // Dim background
+    R.rect(0, 0, R.W, R.H, 'rgba(0,0,0,0.6)');
+    const cx = Math.floor(R.W/2) - 220;
+    let y = Math.floor(R.H/2) - 120;
+    R.textWithBg('AI Dungeon Master', cx, y, '#fff', 'rgba(0,0,0,0.55)'); y += 26;
+    R.text('How to Play', cx, y, '#aef'); y += 22;
+    R.text('- Move: WASD / Arrows (toggle VIM with M)', cx, y); y += 20;
+    R.text('- Dash: Space (brief invulnerability)', cx, y); y += 20;
+    R.text('- Shoot: Click (aim with mouse)', cx, y); y += 20;
+    y += 6;
+    R.text('Goal', cx, y, '#aef'); y += 22;
+    R.text('- Defeat the enemy to clear the room', cx, y); y += 20;
+    R.text('- Every 4th room is a boss', cx, y); y += 20;
+    R.text('- Survive hazards and bullets; HP at top of units', cx, y); y += 20;
+    y += 6;
+    R.text('Tips', cx, y, '#aef'); y += 22;
+    R.text('- Enemies adapt between rooms — keep them guessing', cx, y); y += 20;
+    R.text('- T: change telegraph intensity, B: color mode, C/V: Codex', cx, y); y += 20;
+    y += 12;
+    const msg = 'Press Enter or Click to Start';
+    const bx = Math.floor(R.W/2) - 140, by = y + 8;
+    R.rect(bx, by, 280, 30, 'rgba(255,255,255,0.08)', '#666');
+    R.text(msg, bx + 16, by + 20, '#eaeaea');
+    // Also draw Reset Best button so it’s available on start screen
+    drawResetButton(R);
+    return;
+  }
   // Update camera and clamp to world
   state.camera.x = Math.max(0, Math.min(state.room.W - R.W, state.player.x - R.W * 0.5));
   state.camera.y = Math.max(0, Math.min(state.room.H - R.H, state.player.y - R.H * 0.5));
@@ -335,18 +372,7 @@ function render(alpha) {
   R.text(`${r0.name} weight: ${r0.weights.toFixed(2)}`, 12, 18 + 18*3);
   R.text(`${r1.name} weight: ${r1.weights.toFixed(2)}`, 12, 18 + 18*4);
 
-  // UI: Reset Best button (center-top)
-  const btnW = 160, btnH = 28;
-  const btnX = Math.floor((R.W - btnW) / 2);
-  const btnY = 12;
-  state.ui.resetBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
-  const hover = (state.mouse.x >= btnX && state.mouse.x <= btnX+btnW && state.mouse.y >= btnY && state.mouse.y <= btnY+btnH);
-  const fill = hover ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.10)';
-  R.rect(btnX, btnY, btnW, btnH, fill, '#666');
-  R.text('Reset Best', btnX + 14, btnY + 20, '#eaeaea');
-  if (state.ui.resetMsgTimer > 0) {
-    R.textWithBg('Cleared best performers', btnX - 8, btnY + btnH + 20, '#aef', 'rgba(0,0,0,0.5)');
-  }
+  drawResetButton(R);
   if (state.enemy.archetype === 'Boss') {
     R.text(`Boss Phase: ${state.enemy.memory.phase||1}`, 12, 104);
   }
@@ -440,5 +466,20 @@ function drawHealthBar(R, cx, cy, w, h, hp, maxHp) {
     const fw = Math.max(1, Math.floor(w * ratio));
     const color = ratio > 0.5 ? '#40d370' : ratio > 0.25 ? '#f5c044' : '#ef5a5a';
     R.rect(x, y, fw, h, color);
+  }
+}
+
+function drawResetButton(R) {
+  // UI: Reset Best button (center-top)
+  const btnW = 160, btnH = 28;
+  const btnX = Math.floor((R.W - btnW) / 2);
+  const btnY = 12;
+  state.ui.resetBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+  const hover = (state.mouse.x >= btnX && state.mouse.x <= btnX+btnW && state.mouse.y >= btnY && state.mouse.y <= btnY+btnH);
+  const fill = hover ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.10)';
+  R.rect(btnX, btnY, btnW, btnH, fill, '#666');
+  R.text('Reset Best', btnX + 14, btnY + 20, '#eaeaea');
+  if (state.ui.resetMsgTimer > 0) {
+    R.textWithBg('Cleared best performers', btnX - 8, btnY + btnH + 20, '#aef', 'rgba(0,0,0,0.5)');
   }
 }
