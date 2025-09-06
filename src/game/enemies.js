@@ -116,6 +116,13 @@ export function stepEnemy(e, player, dt, emitProjectile) {
       telegraphPhase(e, 'Phase 3');
     }
   }
+
+  // Apply short evasion burst if set by AI (near-miss dodge)
+  if (e.memory && e.memory.evadeTimer && e.memory.evadeTimer > 0 && e.memory.evadeDir) {
+    e.vx += e.memory.evadeDir.x * e.speed * 1.8;
+    e.vy += e.memory.evadeDir.y * e.speed * 1.8;
+    e.memory.evadeTimer = Math.max(0, e.memory.evadeTimer - dt);
+  }
 }
 
 function tuneRuleWeight(e, name, to) {

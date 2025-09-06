@@ -14,6 +14,8 @@ export function tickAI(enemy, ctx, dt) {
 
   const d = Math.hypot(ctx.player.x - enemy.x, ctx.player.y - enemy.y);
   const hz = ctx.hazards || [];
+  const obstacles = ctx.obstacles || [];
+  const hasLos = lineOfSight(enemy.x, enemy.y, ctx.player.x, ctx.player.y, obstacles);
   const hazardNear = nearestHazardDistance(hz, enemy) < 28 ? 1 : 0;
 
   let bestIdx = 0;
@@ -30,12 +32,15 @@ export function tickAI(enemy, ctx, dt) {
     if (r.name === 'Approach') {
       score *= (d > 120 ? 1.0 : 0.5);
       if (hazardNear) score *= 0.7; // avoid pushing into hazards
+      if (!hasLos && (enemy.archetype === 'Ranged')) score *= 0.4; // ranged shouldn't mindlessly path into walls
     } else if (r.name === 'Strafe') {
       score *= (d <= 160 ? 1.0 : 0.3);
       if (hazardNear) score *= 1.1;
+      if (!hasLos) score *= 1.2; // try to find an angle when occluded
     } else if (r.name === 'KeepDistance') {
       score *= (d < 220 ? 1.2 : 0.7);
       if (hazardNear) score *= 1.15;
+      if (!hasLos && (enemy.archetype === 'Ranged')) score *= 0.7; // don't backpedal into dead-ends when occluded
     } else if (r.name === 'Charge') {
       // prefer mid-range to start a charge
       score *= (d > 90 && d < 220) ? 1.1 : 0.4;
@@ -89,6 +94,14 @@ export function tickAI(enemy, ctx, dt) {
     enemy.memory.telegraph = { text: chosen.name, timer: dur, duration: dur, color, just: true };
     enemy.memory.flash = 0.14;
   }
+
+  // Dodge behavior: if a player bullet is on near-collision course, inject a short evasion burst
+  const bullets = (ctx.projectiles && ctx.projectiles.list) || [];
+  const evasion = detectIncoming(enemy, bullets, 0.28, (enemy.r||12) + 16);
+  if (evasion) {
+    enemy.memory.evadeTimer = 0.14;
+    enemy.memory.evadeDir = { x: evasion.nx, y: evasion.ny };
+  }
 }
 
 function nearestHazardDistance(hazards, e) {
@@ -129,4 +142,53 @@ function isBlacklisted(rule, distance) {
     if (t === 'NoFar' && distance > 200) return true;
   }
   return false;
+}
+
+// Segment vs rect occlusion check using simple edge checks
+function lineOfSight(x1, y1, x2, y2, rects) {
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (segmentIntersectsRect(x1, y1, x2, y2, r)) return false;
+  }
+  return true;
+}
+function segmentIntersectsRect(x1, y1, x2, y2, r) {
+  // Liang-Barsky clipping
+  let dx = x2 - x1, dy = y2 - y1;
+  let p = [-dx, dx, -dy, dy];
+  let q = [x1 - r.x, (r.x + r.w) - x1, y1 - r.y, (r.y + r.h) - y1];
+  let u1 = 0, u2 = 1;
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) { if (q[i] < 0) return false; }
+    else {
+      const t = q[i] / p[i];
+      if (p[i] < 0) { if (t > u2) return false; if (t > u1) u1 = t; }
+      else { if (t < u1) return false; if (t < u2) u2 = t; }
+    }
+  }
+  return u1 <= u2;
+}
+
+function detectIncoming(enemy, bullets, horizon = 0.28, threshold = 24) {
+  let best = null; let bestT = Infinity;
+  for (let i = 0; i < bullets.length; i++) {
+    const p = bullets[i];
+    if (p.owner !== 'player') continue;
+    const rvx = p.vx, rvy = p.vy; const vsq = rvx*rvx + rvy*rvy; if (vsq <= 1e-6) continue;
+    const rx = enemy.x - p.x, ry = enemy.y - p.y;
+    const t = - (rx*rvx + ry*rvy) / vsq;
+    if (t < 0 || t > horizon) continue;
+    const cx = p.x + rvx * t, cy = p.y + rvy * t;
+    const dx = enemy.x - cx, dy = enemy.y - cy; const dist = Math.hypot(dx, dy);
+    if (dist <= threshold && t < bestT) {
+      bestT = t;
+      // perpendicular to bullet velocity; choose side that increases separation
+      const len = Math.sqrt(vsq)||1;
+      let nx = -rvy / len, ny = rvx / len;
+      const side = Math.sign((enemy.x - p.x)*rvy - (enemy.y - p.y)*rvx) || 1;
+      nx *= side; ny *= side;
+      best = { nx, ny };
+    }
+  }
+  return best;
 }

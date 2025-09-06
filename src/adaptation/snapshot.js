@@ -176,13 +176,14 @@ export function stepSimulation(sim, dt, inputBits = 0) {
   // Evaluate best rule by name/weights and simple distance features (mirrors ai_runtime logic)
   let bestIdx = 0, bestScore = -1e9; const d = Math.hypot(player.x - enemy.x, player.y - enemy.y);
   const hz = sim.room.hazards; let hazardNear = 0;
+  const los = lineOfSight(enemy.x, enemy.y, player.x, player.y, sim.room.obstacles);
   // quick hazard proximity
   for (let i=0;i<hz.length;i++){const h=hz[i]; if(h.type==='spike' && h.active){const dx=h.x-enemy.x,dy=h.y-enemy.y;const dd=Math.hypot(dx,dy)-(h.r||0); if(dd<28){hazardNear=1;break;}}}
   for (let i=0;i<enemy.rules.length;i++){
     const r = enemy.rules[i]; if ((r.cooldown||0)>0) continue; let score = r.weights||0.5;
-    if (r.name==='Approach'){ score *= (d>120?1.0:0.5); if(hazardNear) score*=0.7; }
-    else if (r.name==='Strafe'){ score *= (d<=160?1.0:0.3); if(hazardNear) score*=1.1; }
-    else if (r.name==='KeepDistance'){ score *= (d<220?1.2:0.7); if(hazardNear) score*=1.15; }
+    if (r.name==='Approach'){ score *= (d>120?1.0:0.5); if(hazardNear) score*=0.7; if(!los && enemy.archetype==='Ranged') score*=0.4; }
+    else if (r.name==='Strafe'){ score *= (d<=160?1.0:0.3); if(hazardNear) score*=1.1; if(!los) score*=1.2; }
+    else if (r.name==='KeepDistance'){ score *= (d<220?1.2:0.7); if(hazardNear) score*=1.15; if(!los && enemy.archetype==='Ranged') score*=0.7; }
     else if (r.name==='Charge'){ score *= (d>90&&d<220)?1.1:0.4; if(hazardNear) score*=0.8; }
     else if (r.name==='AreaDeny'){ score *= (d>80&&d<260)?1.0:0.5; }
     else if (r.name==='Feint'){ score *= (d<160?0.8:0.3); }
@@ -209,6 +210,9 @@ export function stepSimulation(sim, dt, inputBits = 0) {
       enemy._burstCd = 1.2;
     }
   }
+  // Dodge on near player bullet
+  const dodge = detectIncoming(enemy, sim.projectiles.list, 0.28, (enemy.r||12)+16);
+  if (dodge){ evx += dodge.nx * (enemy.speed||150) * 1.8; evy += dodge.ny * (enemy.speed||150) * 1.8; }
   enemy.x += evx*dt; enemy.y += evy*dt;
   clampToWorld(enemy, sim.world.W, sim.world.H); collideWithObstacles(enemy, sim.room.obstacles);
   enemy.prevVx = evx; enemy.prevVy = evy;
@@ -267,3 +271,7 @@ export function stepSimulation(sim, dt, inputBits = 0) {
   // Unfair flags from extreme rule configs
   const wBy = {}; for (const r of enemy.rules) wBy[r.name||''] = r.weights||0; if ((wBy.Charge||0)>1.6 && (wBy.KeepDistance||0)<0.2) sim.log.unfairFlags += 0.001; if ((wBy.AreaDeny||0)>1.5) sim.log.unfairFlags += 0.001;
 }
+
+function lineOfSight(x1,y1,x2,y2,rects){ for(let i=0;i<rects.length;i++){ if(segmentIntersectsRect(x1,y1,x2,y2,rects[i])) return false; } return true; }
+function segmentIntersectsRect(x1,y1,x2,y2,r){ let dx=x2-x1, dy=y2-y1; let p=[-dx,dx,-dy,dy]; let q=[x1-r.x,(r.x+r.w)-x1,y1-r.y,(r.y+r.h)-y1]; let u1=0,u2=1; for(let i=0;i<4;i++){ if(p[i]===0){ if(q[i]<0) return false; } else { const t=q[i]/p[i]; if(p[i]<0){ if(t>u2) return false; if(t>u1) u1=t; } else { if(t<u1) return false; if(t<u2) u2=t; } } } return u1<=u2; }
+function detectIncoming(enemy, bullets, horizon=0.28, threshold=24){ let best=null, bestT=Infinity; for(let i=0;i<bullets.length;i++){ const p=bullets[i]; if(p.owner!=='player') continue; const rvx=p.vx, rvy=p.vy; const vsq=rvx*rvx+rvy*rvy; if(vsq<=1e-6) continue; const rx=enemy.x-p.x, ry=enemy.y-p.y; const t=-(rx*rvx+ry*rvy)/vsq; if(t<0||t>horizon) continue; const cx=p.x+rvx*t, cy=p.y+rvy*t; const dx=enemy.x-cx, dy=enemy.y-cy; const dist=Math.hypot(dx,dy); if(dist<=threshold && t<bestT){ bestT=t; const len=Math.sqrt(vsq)||1; let nx=-rvy/len, ny=rvx/len; const side=Math.sign((enemy.x-p.x)*rvy - (enemy.y-p.y)*rvx) || 1; nx*=side; ny*=side; best={nx,ny}; } } return best; }

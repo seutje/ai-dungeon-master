@@ -114,7 +114,7 @@ function fixed(dt) {
   // Toggle codex
   if (keys['KeyC']) { state.codex.visible = true; }
   if (keys['KeyV']) { state.codex.visible = false; }
-  tickAI(state.enemy, { player: state.player, hazards: state.room.hazards, settings: state.settings }, dt);
+  tickAI(state.enemy, { player: state.player, hazards: state.room.hazards, obstacles: state.room.obstacles, projectiles: state.projectiles, settings: state.settings }, dt);
   // SFX for fresh telegraphs
   if (state.enemy.memory.telegraph && state.enemy.memory.telegraph.just) {
     state.enemy.memory.telegraph.just = false;
